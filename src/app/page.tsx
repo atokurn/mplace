@@ -1,9 +1,56 @@
-'use client';
-
-import { motion } from 'framer-motion';
-import Image from 'next/image';
+import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
-import ProductCard from '@/components/products/ProductCard';
+import HomeClient from '@/components/home/HomeClient';
+
+export const metadata: Metadata = {
+  title: 'PIXEL - Premium Digital Marketplace',
+  description: 'Discover and purchase high-quality digital assets including backgrounds, illustrations, 3D models, textures, and more from talented creators worldwide.',
+  keywords: 'digital marketplace, digital assets, backgrounds, illustrations, 3D models, textures, design resources',
+  openGraph: {
+    title: 'PIXEL - Premium Digital Marketplace',
+    description: 'Discover and purchase high-quality digital assets from talented creators worldwide.',
+    type: 'website'
+  }
+};
+
+// Fetch homepage data with SSR
+async function getHomePageData() {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    
+    // Fetch featured products
+    const featuredResponse = await fetch(`${baseUrl}/api/products?featured=true&limit=4`, {
+      next: { revalidate: 300 } // Revalidate every 5 minutes
+    });
+    
+    // Fetch regular products
+    const productsResponse = await fetch(`${baseUrl}/api/products?limit=8&page=1`, {
+      next: { revalidate: 300 }
+    });
+    
+    // Fetch analytics for stats
+    const analyticsResponse = await fetch(`${baseUrl}/api/analytics?metric=all&period=30d`, {
+      next: { revalidate: 600 } // Revalidate every 10 minutes
+    });
+
+    const featuredData = featuredResponse.ok ? await featuredResponse.json() : { products: [] };
+    const productsData = productsResponse.ok ? await productsResponse.json() : { products: [] };
+    const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : { data: null };
+
+    return {
+      featuredProducts: featuredData.products || [],
+      products: productsData.products || [],
+      stats: analyticsData.data?.overview || null
+    };
+  } catch (error) {
+    console.error('Error fetching homepage data:', error);
+    return {
+      featuredProducts: [],
+      products: [],
+      stats: null
+    };
+  }
+}
 
 const featuredProducts = [
   {
@@ -59,125 +106,88 @@ const products = [
   }
 ];
 
-export default function Home() {
+export default async function Home() {
+  const { featuredProducts, products, stats } = await getHomePageData();
+  
+  // Fallback data if API fails
+  const fallbackFeatured = [
+    {
+      id: 1,
+      title: 'Vibrant background',
+      tags: ['Digital', 'Background', 'Colorful'],
+      price: 12,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 2,
+      title: 'Man with leaves',
+      tags: ['Portrait', 'Nature', 'Digital'],
+      price: 38,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 3,
+      title: '3D spheres',
+      tags: ['3D', 'Abstract', 'Modern'],
+      price: 15,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 4,
+      title: 'Grunge texture',
+      tags: ['Texture', 'Grunge', 'Vintage'],
+      price: 55,
+      image: '/placeholder.svg'
+    }
+  ];
+
+  const fallbackProducts = [
+    {
+      id: 5,
+      title: 'Abstract patterns',
+      tags: ['Abstract', 'Pattern', 'Geometric'],
+      price: 25,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 6,
+      title: 'Neon lights',
+      tags: ['Neon', 'Futuristic', 'Glow'],
+      price: 42,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 7,
+      title: 'Geometric shapes',
+      tags: ['Geometric', 'Minimal', 'Clean'],
+      price: 18,
+      image: '/placeholder.svg'
+    },
+    {
+      id: 8,
+      title: 'Digital landscape',
+      tags: ['Landscape', 'Digital', 'Nature'],
+      price: 65,
+      image: '/placeholder.svg'
+    }
+  ];
+
+  const fallbackStats = {
+    totalDownloads: 8945,
+    totalUsers: 2847,
+    totalSales: 1523,
+    totalRevenue: 125430
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-yellow-200 to-yellow-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-            >
-              <h1 className="orbitron-title text-6xl lg:text-7xl font-bold text-black mb-8 leading-tight">
-                DIGITAL<br />
-                ASSET<br />
-                MARKETPL<br />
-                ACE
-              </h1>
-              <motion.button
-                className="bg-white text-black px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors border border-border"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                EXPLORE CATALOG
-              </motion.button>
-            </motion.div>
-            
-            <motion.div
-              className="relative"
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-            >
-              <div className="bg-black rounded-3xl p-8 aspect-square flex items-center justify-center">
-                <motion.div
-                  className="w-64 h-64 rounded-full"
-                  style={{
-                    background: 'linear-gradient(45deg, #3b82f6, #8b5cf6, #ec4899)'
-                  }}
-                  animate={{
-                    rotate: 360
-                  }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: 'linear'
-                  }}
-                />
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Digital Items */}
-      <section className="bg-background py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.h2
-            className="text-4xl font-bold text-center text-foreground mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            Featured Digital Items
-          </motion.h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {featuredProducts.map((product, index) => (
-              <ProductCard
-                key={index}
-                title={product.title}
-                price={product.price}
-                image={product.image}
-                tags={product.tags}
-                index={index}
-              />
-            ))}
-          </div>
-          
-          <div className="text-center">
-            <motion.button
-              className="bg-secondary text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-accent hover:text-background transition-colors border border-border"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              VIEW ALL
-            </motion.button>
-          </div>
-        </div>
-      </section>
-
-      {/* Product Section */}
-      <section className="bg-gradient-to-br from-yellow-200 to-yellow-300 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.h2
-            className="pixel-font text-4xl font-bold text-black mb-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            Product
-          </motion.h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {products.map((product, index) => (
-              <ProductCard
-                key={index}
-                title={product.title}
-                price={product.price}
-                image={product.image}
-                tags={product.tags}
-                index={index}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+      <HomeClient 
+        featuredProducts={featuredProducts.length > 0 ? featuredProducts : fallbackFeatured}
+        products={products.length > 0 ? products : fallbackProducts}
+        stats={stats || fallbackStats}
+      />
     </div>
   );
 }

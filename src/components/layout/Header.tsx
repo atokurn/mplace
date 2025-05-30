@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
@@ -65,20 +66,22 @@ const Header = () => {
             className="pixel-font text-2xl font-bold text-foreground"
             whileHover={{ scale: 1.05 }}
           >
-            DAMA
+            <Link href="/">
+              DAMA
+            </Link>
           </motion.div>
           
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
             {navItems.map((item) => (
-              <motion.a
-                key={item.key}
-                href={item.href}
-                className="text-foreground hover:text-accent transition-colors font-medium"
-                whileHover={{ y: -2 }}
-              >
-                {item.label}
-              </motion.a>
+              <Link key={item.key} href={item.href}>
+                <motion.div
+                  className="text-foreground hover:text-accent transition-colors font-medium cursor-pointer"
+                  whileHover={{ y: -2 }}
+                >
+                  {item.label}
+                </motion.div>
+              </Link>
             ))}
           </nav>
           
@@ -242,18 +245,19 @@ const Header = () => {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <div className="px-4 py-3 space-y-1">
+              <div className="px-4 py-3 space-y-1">
               {navItems.map((item) => (
-                <motion.a
-                  key={item.key}
-                  href={item.href}
-                  className="block py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                  whileHover={{ x: 5 }}
-                >
-                  {item.label}
-                </motion.a>
+                <Link key={item.key} href={item.href}>
+                  <motion.div
+                    className="block py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                    whileHover={{ x: 5 }}
+                  >
+                    {item.label}
+                  </motion.div>
+                </Link>
               ))}
+            
               
               {/* Language Selector (Mobile) */}
               <div className="py-2 px-3">
