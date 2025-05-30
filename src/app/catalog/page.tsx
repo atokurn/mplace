@@ -261,7 +261,7 @@ const CatalogPage = () => {
       <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <motion.button
-            className="orbitron-font px-8 py-3 bg-accent text-background font-bold rounded-2xl hover:bg-accent/90 transition-colors text-xs"
+            className="orbitron-font px-8 py-3 bg-accent text-background font-bold  hover:bg-accent/90 transition-colors text-xs border border-border"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
