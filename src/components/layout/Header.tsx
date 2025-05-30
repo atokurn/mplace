@@ -1,16 +1,23 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Sun, Moon, Menu, X, Globe, ShoppingCart } from 'lucide-react';
+import { User, Sun, Moon, Menu, X, Globe, ShoppingCart, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
+  // Simulasi status login - nanti bisa diganti dengan context auth yang sebenarnya
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState({ name: 'John Doe', email: 'john@example.com' });
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -22,11 +29,29 @@ const Header = () => {
     setLanguageMenuOpen(!languageMenuOpen);
   };
 
+  const toggleUserMenu = () => {
+    setUserMenuOpen(!userMenuOpen);
+  };
+
+  const handleUserProfileClick = () => {
+    if (!isLoggedIn) {
+      router.push('/login');
+    } else {
+      toggleUserMenu();
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserMenuOpen(false);
+    // Tambahkan logika logout lainnya di sini
+  };
+
   const navItems = [
     { key: 'catalog', label: t('catalog'), href: '/catalog' },
     { key: 'portfolio', label: t('portfolio'), href: '#' },
     { key: 'contact', label: t('contact'), href: '/contact' },
-    { key: 'about', label: t('about'), href: '#' },
+    { key: 'about', label: t('about'), href: '/about' },
   ];
 
   return (
@@ -129,14 +154,55 @@ const Header = () => {
               </span>
             </motion.div>
             
-            {/* User Icon */}
-            <motion.div
-              className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors cursor-pointer"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <User size={20} />
-            </motion.div>
+            {/* User Profile */}
+            <div className="relative">
+              <motion.button
+                onClick={handleUserProfileClick}
+                className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                aria-label="User profile"
+              >
+                <User size={20} />
+              </motion.button>
+              
+              {/* User Dropdown */}
+              <AnimatePresence>
+                {isLoggedIn && userMenuOpen && (
+                  <motion.div
+                    className="absolute right-0 mt-2 w-56 bg-card-bg border border-border rounded-lg shadow-lg overflow-hidden z-50"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="px-4 py-3 border-b border-border">
+                      <p className="text-sm font-medium text-foreground">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          router.push('/profile');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
+                      >
+                        <Settings size={16} className="mr-3" />
+                        {language === 'en' ? 'Settings' : 'Pengaturan'}
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
+                      >
+                        <LogOut size={16} className="mr-3" />
+                        {language === 'en' ? 'Logout' : 'Keluar'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
           
           {/* Mobile Menu Button */}
@@ -222,14 +288,53 @@ const Header = () => {
               </motion.a>
               
               {/* User Profile (Mobile) */}
-              <motion.a
-                href="#"
-                className="flex items-center py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors"
-                whileHover={{ x: 5 }}
-              >
-                <User size={18} className="mr-2" />
-                <span>{language === 'en' ? 'Profile' : 'Profil'}</span>
-              </motion.a>
+              {isLoggedIn ? (
+                <div className="py-2 px-3">
+                  <div className="flex items-center mb-2">
+                    <User size={18} className="mr-2 text-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="ml-6 space-y-1">
+                    <motion.button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="flex items-center w-full text-left py-1 text-sm text-foreground hover:text-accent transition-colors"
+                      whileHover={{ x: 5 }}
+                    >
+                      <Settings size={14} className="mr-2" />
+                      {language === 'en' ? 'Settings' : 'Pengaturan'}
+                    </motion.button>
+                    <motion.button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center w-full text-left py-1 text-sm text-foreground hover:text-accent transition-colors"
+                      whileHover={{ x: 5 }}
+                    >
+                      <LogOut size={14} className="mr-2" />
+                      {language === 'en' ? 'Logout' : 'Keluar'}
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <motion.button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/login');
+                  }}
+                  className="flex items-center w-full text-left py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors"
+                  whileHover={{ x: 5 }}
+                >
+                  <User size={18} className="mr-2" />
+                  <span>{language === 'en' ? 'Login' : 'Masuk'}</span>
+                </motion.button>
+              )}
             </div>
           </motion.div>
         )}

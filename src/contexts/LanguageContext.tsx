@@ -18,6 +18,8 @@ const translations = {
     contact: 'CONTACT',
     about: 'ABOUT',
     cart: 'CART',
+    login: 'LOGIN',
+    signup: 'SIGN UP',
     
     // Hero Section
     heroTitle: 'DIGITAL ASSET MARKETPLACE',
@@ -27,6 +29,29 @@ const translations = {
     featuredItems: 'Featured Digital Items',
     viewAll: 'VIEW ALL',
     product: 'Product',
+    
+    // Authentication
+    welcomeBack: 'WELCOME BACK',
+    signInToAccount: 'Sign in to your account',
+    createAccount: 'CREATE ACCOUNT',
+    joinMarketplace: 'Join the digital marketplace',
+    continueWithGoogle: 'Continue with Google',
+    continueWithGithub: 'Continue with GitHub',
+    orContinueWithEmail: 'Or continue with email',
+    orCreateWithEmail: 'Or create with email',
+    emailAddress: 'Email Address',
+    password: 'Password',
+    confirmPassword: 'Confirm Password',
+    firstName: 'First Name',
+    lastName: 'Last Name',
+    rememberMe: 'Remember me',
+    forgotPassword: 'Forgot password?',
+    signIn: 'Sign In',
+    createAccountBtn: 'Create Account',
+    dontHaveAccount: "Don't have an account?",
+    alreadyHaveAccount: 'Already have an account?',
+    agreeToTerms: 'I agree to the Terms of Service and Privacy Policy',
+    subscribeNewsletter: 'Subscribe to our newsletter for updates and exclusive offers',
     
     // Language
     english: 'English',
@@ -39,6 +64,8 @@ const translations = {
     contact: 'KONTAK',
     about: 'TENTANG',
     cart: 'KERANJANG',
+    login: 'MASUK',
+    signup: 'DAFTAR',
     
     // Hero Section
     heroTitle: 'MARKETPLACE ASET DIGITAL',
@@ -48,6 +75,29 @@ const translations = {
     featuredItems: 'Item Digital Unggulan',
     viewAll: 'LIHAT SEMUA',
     product: 'Produk',
+    
+    // Authentication
+    welcomeBack: 'SELAMAT DATANG KEMBALI',
+    signInToAccount: 'Masuk ke akun Anda',
+    createAccount: 'BUAT AKUN',
+    joinMarketplace: 'Bergabung dengan marketplace digital',
+    continueWithGoogle: 'Lanjutkan dengan Google',
+    continueWithGithub: 'Lanjutkan dengan GitHub',
+    orContinueWithEmail: 'Atau lanjutkan dengan email',
+    orCreateWithEmail: 'Atau buat dengan email',
+    emailAddress: 'Alamat Email',
+    password: 'Kata Sandi',
+    confirmPassword: 'Konfirmasi Kata Sandi',
+    firstName: 'Nama Depan',
+    lastName: 'Nama Belakang',
+    rememberMe: 'Ingat saya',
+    forgotPassword: 'Lupa kata sandi?',
+    signIn: 'Masuk',
+    createAccountBtn: 'Buat Akun',
+    dontHaveAccount: 'Belum punya akun?',
+    alreadyHaveAccount: 'Sudah punya akun?',
+    agreeToTerms: 'Saya setuju dengan Syarat Layanan dan Kebijakan Privasi',
+    subscribeNewsletter: 'Berlangganan newsletter untuk update dan penawaran eksklusif',
     
     // Language
     english: 'Bahasa Inggris',
