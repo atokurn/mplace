@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import { Heart } from 'lucide-react';
+import { useState } from 'react';
 
 interface ProductCardProps {
   title: string;
@@ -12,9 +14,15 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ title, price, image, tags, index }: ProductCardProps) => {
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
+  const toggleWishlist = () => {
+    setIsWishlisted(!isWishlisted);
+  };
+
   return (
     <motion.div
-      className="bg-card-bg  overflow-hidden shadow-lg hover:shadow-[0_0_15px_rgba(0,255,153,0.3)] transition-all border border-border"
+      className="bg-card-bg overflow-hidden product-card-hover border-r border-b border-border"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -27,21 +35,53 @@ const ProductCard = ({ title, price, image, tags, index }: ProductCardProps) => 
           fill
           className="object-cover"
         />
+        {/* Wishlist/Bookmark Button */}
+        <motion.button
+          onClick={toggleWishlist}
+          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all duration-200 ${
+            isWishlisted 
+              ? 'bg-accent/20 text-accent' 
+              : 'bg-black/20 text-white hover:bg-black/40'
+          }`}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          <Heart 
+            size={18} 
+            className={`transition-all duration-200 ${
+              isWishlisted ? 'fill-current' : ''
+            }`}
+          />
+        </motion.button>
       </div>
       
-      <div className="p-4">
-        <h3 className="font-semibold text-lg text-foreground">{title}</h3>
+      <div className="p-3 sm:p-4">
+        <h3 className="font-semibold text-sm sm:text-base text-foreground line-clamp-2 mb-2">{title}</h3>
         
-        <div className="flex flex-wrap gap-2 my-2">
-          {tags.map((tag, i) => (
-            <span key={i} className="text-xs bg-secondary  px-2 py-1 rounded-full">
+        <div className="flex flex-wrap gap-1 sm:gap-2 mb-3">
+          {tags.slice(0, 2).map((tag, i) => (
+            <span key={i} className="text-xs bg-secondary px-2 py-1 rounded-full text-muted-foreground">
               {tag}
             </span>
           ))}
+          {tags.length > 2 && (
+            <span className="text-xs text-muted-foreground px-2 py-1">
+              +{tags.length - 2}
+            </span>
+          )}
         </div>
         
-        <div className="mt-4 font-bold text-xl">
-          ${price}
+        <div className="flex items-center justify-between">
+          <div className="font-bold text-lg sm:text-xl text-accent">
+            ${price}
+          </div>
+          <motion.button
+            className="text-xs sm:text-sm bg-accent text-background px-3 py-1.5 rounded-lg hover:bg-accent/90 transition-colors font-medium"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            VIEW
+          </motion.button>
         </div>
       </div>
     </motion.div>

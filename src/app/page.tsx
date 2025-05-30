@@ -73,7 +73,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <h1 className="pixel-font text-6xl lg:text-7xl font-bold text-black mb-8 leading-tight">
+              <h1 className="orbitron-title text-6xl lg:text-7xl font-bold text-black mb-8 leading-tight">
                 DIGITAL<br />
                 ASSET<br />
                 MARKETPL<br />

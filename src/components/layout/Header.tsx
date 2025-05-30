@@ -40,7 +40,7 @@ const Header = () => {
             className="pixel-font text-2xl font-bold text-foreground"
             whileHover={{ scale: 1.05 }}
           >
-            DHXEL
+            DAMA
           </motion.div>
           
           {/* Desktop Navigation */}
