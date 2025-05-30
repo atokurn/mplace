@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light mode colors */
+  --background: #FEFEFE;
+  --foreground: #0f0f0f;
+  --accent: #D1EE44;
+  --secondary: #f5f5f5;
+  --card-bg: #ffffff;
+  --border: #404040;
+}
+
+.dark {
+  /* Dark mode colors */
+  --background: #0f0f0f;
+  --foreground: #ffffff;
+  --accent: #D1EE44;
+  --secondary: #2f2f2f;
+  --card-bg: #2f2f2f;
+  --border: #404040;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-secondary: var(--secondary);
+  --color-card-bg: var(--card-bg);
+  --color-border: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-orbitron: var(--font-orbitron);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.pixel-font {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.orbitron-font {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 400;
 }
