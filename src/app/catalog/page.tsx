@@ -6,13 +6,14 @@ import ProductCard from '@/components/products/ProductCard';
 import Header from '@/components/layout/Header';
 import Sheet from '@/components/ui/Sheet';
 import { useState } from 'react';
-import { Filter, SortAsc, SortDesc } from 'lucide-react';
+import { Filter, SortAsc, SortDesc, Search } from 'lucide-react';
 
 const CatalogPage = () => {
   const { t } = useLanguage();
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   const [filterTag, setFilterTag] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
 
@@ -109,7 +110,13 @@ const CatalogPage = () => {
 
   // Filter and sort products
   const filteredAndSortedProducts = products
-    .filter(product => filterTag === 'all' || product.tags.includes(filterTag))
+    .filter(product => {
+      const matchesTag = filterTag === 'all' || product.tags.includes(filterTag);
+      const matchesSearch = searchQuery === '' || 
+        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesTag && matchesSearch;
+    })
     .sort((a, b) => {
       let comparison = 0;
       if (sortBy === 'name') {
@@ -146,9 +153,28 @@ const CatalogPage = () => {
         </div>
       </section>
 
-      {/* Filter and Sort Section */}
-      <section className="border-t border-b border-border">
+      {/* Search Bar */}
+      <section className="border-t border-b border-border bg-background">
         <div className="w-full">
+          <div className="flex items-center h-20 px-4 justify-center">
+            <div className="relative w-full max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Filter and Sort Section */}
+      <section className="border-b border-border bg-background sticky top-16 z-40">
+        <div className="w-full">
+          {/* Filter and Sort Controls */}
           <div className="flex items-center h-12">
             {/* Products Count */}
             <div className="flex-1 px-4 border-r border-border h-full flex items-center">
@@ -264,10 +290,10 @@ const CatalogPage = () => {
                     setFilterTag(tag);
                     setIsFilterSheetOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
                     filterTag === tag
-                      ? 'bg-accent text-background font-medium'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      ? 'bg-accent text-background font-medium border-accent'
+                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
                   }`}
                 >
                   {tag.toUpperCase()}
@@ -295,10 +321,10 @@ const CatalogPage = () => {
                 <button
                   key={option.value}
                   onClick={() => setSortBy(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
                     sortBy === option.value
-                      ? 'bg-accent text-background font-medium'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      ? 'bg-accent text-background font-medium border-accent'
+                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
                   }`}
                 >
                   {option.label}
@@ -316,10 +342,10 @@ const CatalogPage = () => {
                 <button
                   key={option.value}
                   onClick={() => setSortOrder(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
                     sortOrder === option.value
-                      ? 'bg-accent text-background font-medium'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80'
+                      ? 'bg-accent text-background font-medium border-accent'
+                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
                   }`}
                 >
                   {option.label}
@@ -330,7 +356,7 @@ const CatalogPage = () => {
           
           <button
             onClick={() => setIsSortSheetOpen(false)}
-            className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium"
+            className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
           >
             APPLY SORT
           </button>

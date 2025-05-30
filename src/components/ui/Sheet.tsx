@@ -65,15 +65,15 @@ const Sheet = ({ isOpen, onClose, children, title, side = 'right' }: SheetProps)
     
     switch (side) {
       case 'left':
-        return `${baseClasses} left-0 top-0 h-full w-80 border-r`;
+        return `${baseClasses} left-0 top-0 h-full w-full sm:w-80 border-r`;
       case 'right':
-        return `${baseClasses} right-0 top-0 h-full w-80 border-l`;
+        return `${baseClasses} right-0 top-0 h-full w-full sm:w-80 border-l`;
       case 'top':
-        return `${baseClasses} top-0 left-0 w-full h-80 border-b`;
+        return `${baseClasses} top-0 left-0 w-full h-full sm:h-80 border-b`;
       case 'bottom':
-        return `${baseClasses} bottom-0 left-0 w-full h-80 border-t`;
+        return `${baseClasses} bottom-0 left-0 w-full h-full sm:h-80 border-t`;
       default:
-        return `${baseClasses} right-0 top-0 h-full w-80 border-l`;
+        return `${baseClasses} right-0 top-0 h-full w-full sm:w-80 border-l`;
     }
   };
 
