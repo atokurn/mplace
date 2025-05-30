@@ -25,7 +25,7 @@ const Header = () => {
   const navItems = [
     { key: 'catalog', label: t('catalog'), href: '/catalog' },
     { key: 'portfolio', label: t('portfolio'), href: '#' },
-    { key: 'reviews', label: t('reviews'), href: '#' },
+    { key: 'contact', label: t('contact'), href: '/contact' },
     { key: 'about', label: t('about'), href: '#' },
   ];
 

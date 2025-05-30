@@ -15,7 +15,7 @@ const translations = {
     // Navigation
     catalog: 'CATALOG',
     portfolio: 'PORTFOLIO',
-    reviews: 'REVIEWS',
+    contact: 'CONTACT',
     about: 'ABOUT',
     cart: 'CART',
     
@@ -36,7 +36,7 @@ const translations = {
     // Navigation
     catalog: 'KATALOG',
     portfolio: 'PORTOFOLIO',
-    reviews: 'ULASAN',
+    contact: 'KONTAK',
     about: 'TENTANG',
     cart: 'KERANJANG',
     
