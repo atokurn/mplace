@@ -76,7 +76,7 @@ const ProductCard = ({ title, price, image, tags, index }: ProductCardProps) => 
             ${price}
           </div>
           <motion.button
-            className="text-xs sm:text-sm bg-accent text-border px-3 py-1.5 hover:bg-accent/90 transition-colors font-medium border border-border"
+            className="text-xs sm:text-sm bg-accent text-muted px-3 py-1.5 hover:bg-accent/90 transition-colors font-medium border border-border"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

@@ -3,9 +3,10 @@
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ProductCard from '@/components/products/ProductCard';
-import Sheet from '@/components/ui/Sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useEffect } from 'react';
-import { Filter, SortAsc, SortDesc, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, SortAsc, SortDesc, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -51,6 +52,13 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   const [searchQuery, setSearchQuery] = useState(initialFilters.search || '');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
+  
+  // New filter states
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState({ min: '', max: '' });
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
+  const [showMoreTags, setShowMoreTags] = useState(false);
 
   // Update URL when filters change
   const updateURL = (newParams: Record<string, string>) => {
@@ -78,7 +86,33 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   const handleFilterChange = (category: string) => {
     setFilterTag(category);
     updateURL({ category });
-    setIsFilterSheetOpen(false);
+  };
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categoryId) 
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
+
+  const clearAllFilters = () => {
+    setSelectedCategories([]);
+    setSelectedTags([]);
+    setPriceRange({ min: '', max: '' });
+  };
+
+  const getActiveFiltersCount = () => {
+    return selectedCategories.length + selectedTags.length + 
+           (priceRange.min || priceRange.max ? 1 : 0);
   };
 
   const handleSortChange = (newSortBy: string, newSortOrder: string) => {
@@ -89,14 +123,26 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   };
 
   const categories = [
-    { id: 'all', name: 'All Categories' },
-    { id: 'background', name: 'Backgrounds' },
-    { id: 'illustration', name: 'Illustrations' },
-    { id: '3d', name: '3D Assets' },
-    { id: 'texture', name: 'Textures' },
-    { id: 'pattern', name: 'Patterns' },
-    { id: 'artistic', name: 'Artistic' }
+    { id: 'background', name: 'Backgrounds', color: 'bg-blue-500' },
+    { id: 'illustration', name: 'Illustrations', color: 'bg-green-500' },
+    { id: '3d', name: '3D Assets', color: 'bg-purple-500' },
+    { id: 'texture', name: 'Textures', color: 'bg-orange-500' },
+    { id: 'pattern', name: 'Patterns', color: 'bg-pink-500' },
+    { id: 'artistic', name: 'Artistic', color: 'bg-yellow-500' },
+    { id: 'ui-kit', name: 'UI Kits', color: 'bg-red-500' },
+    { id: 'icons', name: 'Icons', color: 'bg-indigo-500' },
+    { id: 'fonts', name: 'Fonts', color: 'bg-teal-500' },
+    { id: 'mockups', name: 'Mockups', color: 'bg-cyan-500' }
   ];
+  
+  const popularTags = [
+    'Abstract', 'Modern', 'Minimalist', 'Colorful', 'Dark', 'Light',
+    'Geometric', 'Organic', 'Vintage', 'Futuristic', 'Nature', 'Urban',
+    'Professional', 'Creative', 'Elegant', 'Bold', 'Subtle', 'Gradient'
+  ];
+  
+  const visibleCategories = showMoreCategories ? categories : categories.slice(0, 6);
+  const visibleTags = showMoreTags ? popularTags : popularTags.slice(0, 8);
 
   const sortOptions = [
     { id: 'createdAt-desc', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' },
@@ -170,7 +216,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
 
       {/* Products Grid */}
       <section className="py-0">
-        <div className="w-full">
+        {initialProducts.length > 0 ? (
           <motion.div
             className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 border-t border-l border-border"
             initial={{ opacity: 0 }}
@@ -184,37 +230,31 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.05 }}
               >
-                <Link href={`/products/${product.id}`}>
-                  <ProductCard
-                    title={product.title}
-                    tags={product.tags}
-                    price={product.price}
-                    image={product.image}
-                    index={index}
-                  />
-                </Link>
+                <ProductCard
+                  id={product.id}
+                  title={product.title}
+                  tags={product.tags}
+                  price={product.price}
+                  image={product.image}
+                  index={index}
+                  downloads={product.downloads}
+                  rating={product.rating}
+                />
               </motion.div>
             ))}
           </motion.div>
-          
-          {/* No results message */}
-          {initialProducts.length === 0 && (
-            <motion.div 
-              className="text-center py-16"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="text-6xl mb-4">🔍</div>
-              <p className="orbitron-font text-muted-foreground text-sm mb-2">
-                 NO PRODUCTS FOUND
-               </p>
-               <p className="text-xs text-muted-foreground">
-                 Try adjusting your filters or search terms
-               </p>
-            </motion.div>
-          )}
-        </div>
+        ) : (
+          /* No results message */
+          <motion.div
+            className="text-center py-16"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="text-muted-foreground text-lg mb-2">No products found</div>
+            <div className="text-muted-foreground text-sm">Try adjusting your search or filters</div>
+          </motion.div>
+        )}
       </section>
 
       {/* Pagination */}
@@ -247,93 +287,248 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
       )}
 
       {/* Filter Sheet */}
-      <Sheet
-        isOpen={isFilterSheetOpen}
-        onClose={() => setIsFilterSheetOpen(false)}
-        title="Filter Products"
-        side="right"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              CATEGORY
-            </label>
-            <div className="space-y-2">
-              {categories.map(category => (
+      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-full">
+          <SheetHeader>
+            <SheetTitle className="orbitron-font text-lg font-medium text-foreground uppercase">FILTER</SheetTitle>
+          </SheetHeader>
+          <div className="h-full flex flex-col mt-4">          
+            {/* Active Filters Count & Clear */}
+            {getActiveFiltersCount() > 0 && (
+              <div className="flex items-center justify-between p-4 bg-secondary/30 border-b border-border">
+                <span className="text-xs text-muted-foreground">
+                  {getActiveFiltersCount()} filter{getActiveFiltersCount() > 1 ? 's' : ''} applied
+                </span>
                 <button
-                  key={category.id}
-                  onClick={() => handleFilterChange(category.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    filterTag === category.id
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
+                  onClick={clearAllFilters}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors"
                 >
-                  {category.name.toUpperCase()}
+                  Clear all
                 </button>
-              ))}
+              </div>
+            )}
+            
+            {/* Scrollable Filter Content */}
+            <ScrollArea className="flex-1 pr-4">
+              {/* Categories Section */}
+              <div className="border-b border-border">
+                <div className="p-4">
+                  <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Category</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                     {visibleCategories.map(category => (
+                       <label key={category.id} className="flex items-center gap-2 cursor-pointer group">
+                         <div className="relative">
+                           <input
+                             type="checkbox"
+                             checked={selectedCategories.includes(category.id)}
+                             onChange={() => handleCategoryToggle(category.id)}
+                             className="sr-only"
+                           />
+                           <div className={`w-4 h-4 rounded border-2 transition-all ${
+                             selectedCategories.includes(category.id)
+                               ? 'bg-accent border-accent'
+                               : 'border-border group-hover:border-accent/50'
+                           }`}>
+                             {selectedCategories.includes(category.id) && (
+                               <div className="w-full h-full flex items-center justify-center">
+                                 <div className="w-2 h-2 bg-background rounded-sm" />
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                           <div className={`w-3 h-3 rounded-full flex-shrink-0 ${category.color}`} />
+                           <span className="text-sm text-foreground group-hover:text-accent transition-colors truncate">
+                             {category.name}
+                           </span>
+                         </div>
+                       </label>
+                     ))}
+                  </div>
+                  
+                  {categories.length > 6 && (
+                    <button
+                      onClick={() => setShowMoreCategories(!showMoreCategories)}
+                      className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
+                    >
+                      {showMoreCategories ? (
+                        <>
+                          <ChevronUp size={14} />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} />
+                          Show more ({categories.length - 6})
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tags Section */}
+              <div className="border-b border-border">
+                <div className="p-4">
+                  <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {visibleTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => handleTagToggle(tag)}
+                        className={`px-3 py-1.5 rounded-full text-xs transition-colors border ${
+                          selectedTags.includes(tag)
+                            ? 'bg-accent text-background border-accent'
+                            : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {popularTags.length > 8 && (
+                    <button
+                      onClick={() => setShowMoreTags(!showMoreTags)}
+                      className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
+                    >
+                      {showMoreTags ? (
+                        <>
+                          <ChevronUp size={14} />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} />
+                          Show more ({popularTags.length - 8})
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Price Range Section */}
+              <div className="p-4">
+                <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Price Range</h3>
+                <div className="flex gap-2 mb-3">
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Min</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={priceRange.min}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-xs text-muted-foreground mb-1 block">Max</label>
+                    <input
+                      type="number"
+                      placeholder="100"
+                      value={priceRange.max}
+                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                {/* Quick Price Filters */}
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Free', min: '0', max: '0' },
+                    { label: 'Under $10', min: '0', max: '10' },
+                    { label: '$10 - $25', min: '10', max: '25' },
+                    { label: '$25 - $50', min: '25', max: '50' },
+                    { label: 'Over $50', min: '50', max: '' }
+                  ].map(range => (
+                    <button
+                      key={range.label}
+                      onClick={() => setPriceRange({ min: range.min, max: range.max })}
+                      className={`px-3 py-1.5 rounded-full text-xs transition-colors border ${
+                        priceRange.min === range.min && priceRange.max === range.max
+                          ? 'bg-accent text-background border-accent'
+                          : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                      }`}
+                    >
+                      {range.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </ScrollArea>
+
+            {/* Sticky Apply Button */}
+            <div className="sticky bottom-0 bg-background border-t p-4 pt-4 mt-4">
+            <button
+                onClick={() => setIsFilterSheetOpen(false)}
+                className="w-full orbitron-font bg-accent text-background px-4 py-3 rounded-xl hover:bg-accent/90 transition-colors text-sm font-medium"
+              >
+                APPLY FILTERS
+              </button>
             </div>
           </div>
-        </div>
+        </SheetContent>
       </Sheet>
 
       {/* Sort Sheet */}
-      <Sheet
-        isOpen={isSortSheetOpen}
-        onClose={() => setIsSortSheetOpen(false)}
-        title="Sort Products"
-        side="right"
-      >
-        <div className="space-y-6">
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              SORT BY
-            </label>
-            <div className="space-y-2">
-              {[{ value: 'title', label: 'NAME' }, { value: 'price', label: 'PRICE' }, { value: 'createdAt', label: 'DATE' }].map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setSortBy(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    sortBy === option.value
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+      <Sheet open={isSortSheetOpen} onOpenChange={setIsSortSheetOpen}>
+        <SheetContent side="right" className="w-full sm:w-full">
+          <SheetHeader>
+            <SheetTitle className="orbitron-font text-lg font-medium text-foreground uppercase">Sort Products</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6 p-4">
+            <div>
+              <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
+                SORT BY
+              </label>
+              <div className="space-y-2">
+                {[{ value: 'title', label: 'NAME' }, { value: 'price', label: 'PRICE' }, { value: 'createdAt', label: 'DATE' }].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSortBy(option.value)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
+                      sortBy === option.value
+                        ? 'bg-accent text-background font-medium border-accent'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              ORDER
-            </label>
-            <div className="space-y-2">
-              {[{ value: 'asc', label: 'ASCENDING' }, { value: 'desc', label: 'DESCENDING' }].map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setSortOrder(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    sortOrder === option.value
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            
+            <div>
+              <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
+                ORDER
+              </label>
+              <div className="space-y-2">
+                {[{ value: 'asc', label: 'ASCENDING' }, { value: 'desc', label: 'DESCENDING' }].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSortOrder(option.value)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
+                      sortOrder === option.value
+                        ? 'bg-accent text-background font-medium border-accent'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            
+            <button
+              onClick={() => setIsSortSheetOpen(false)}
+              className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
+            >
+              APPLY SORT
+            </button>
           </div>
-          
-          <button
-            onClick={() => setIsSortSheetOpen(false)}
-            className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
-          >
-            APPLY SORT
-          </button>
-        </div>
+        </SheetContent>
       </Sheet>
     </div>
   );
