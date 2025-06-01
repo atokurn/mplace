@@ -79,9 +79,6 @@ const CreatePromotionPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // Here you would make the actual API call to create the promotion
       console.log('Creating promotion:', formData);
       

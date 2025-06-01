@@ -97,7 +97,7 @@ const EditPromotionPage = () => {
           }
         };
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Simulate loading delay removed
         
         const promotion = mockPromotions[promotionId as keyof typeof mockPromotions];
         if (promotion) {
@@ -159,9 +159,6 @@ const EditPromotionPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       // Here you would make the actual API call to update the promotion
       console.log('Updating promotion:', { id: promotionId, ...formData });
       
@@ -178,9 +175,6 @@ const EditPromotionPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Here you would make the actual API call to delete the promotion
       console.log('Deleting promotion:', promotionId);
       

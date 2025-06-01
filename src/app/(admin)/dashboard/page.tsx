@@ -1,342 +1,394 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  ShoppingBag, 
-  DollarSign, 
-  Download,
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Package,
+  Users,
+  ShoppingCart,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
   Eye,
-  Star,
-  Calendar,
-  BarChart3,
-  PieChart,
-  Activity
+  Download,
+  Plus
 } from 'lucide-react';
+import {
+  createColumnHelper,
+  getCoreRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
 
-interface StatCard {
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { DataTable } from '@/components/data-table/data-table';
+import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
+import { DataTableSkeleton } from '@/components/data-table/data-table-skeleton';
+
+interface RecentDownload {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  productTitle: string;
+  productPrice: string;
+  downloadedAt: string;
+}
+
+interface TopProduct {
+  id: string;
   title: string;
-  value: string;
-  change: number;
-  icon: React.ReactNode;
-  color: string;
+  downloadCount: number;
+  price: string;
+  revenue: number;
+  category: string;
 }
 
-interface ChartData {
-  name: string;
-  value: number;
-  color: string;
+interface DashboardStats {
+  totalProducts: number;
+  totalUsers: number;
+  totalDownloads: number;
+  totalRevenue: number;
+  monthlyGrowth: number;
+  conversionRate: number;
+  averageRating: number;
 }
+
+const columnHelper = createColumnHelper<RecentDownload>();
 
 const DashboardPage = () => {
-  const [timeRange, setTimeRange] = useState('7d');
+  const [stats, setStats] = useState<DashboardStats>({
+    totalProducts: 0,
+    totalUsers: 0,
+    totalDownloads: 0,
+    totalRevenue: 0,
+    monthlyGrowth: 0,
+    conversionRate: 0,
+    averageRating: 0
+  });
 
-  const stats: StatCard[] = [
-    {
-      title: 'Total Revenue',
-      value: '$12,450',
-      change: 12.5,
-      icon: <DollarSign size={24} />,
-      color: 'text-green-400'
-    },
-    {
-      title: 'Total Users',
-      value: '2,847',
-      change: 8.2,
-      icon: <Users size={24} />,
-      color: 'text-blue-400'
-    },
-    {
-      title: 'Total Orders',
-      value: '1,234',
-      change: -2.1,
-      icon: <ShoppingBag size={24} />,
-      color: 'text-purple-400'
-    },
-    {
-      title: 'Downloads',
-      value: '8,945',
-      change: 15.3,
-      icon: <Download size={24} />,
-      color: 'text-orange-400'
-    }
-  ];
+  const [recentDownloads, setRecentDownloads] = useState<RecentDownload[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const revenueData: ChartData[] = [
-    { name: 'Jan', value: 4000, color: '#00ff99' },
-    { name: 'Feb', value: 3000, color: '#00ff99' },
-    { name: 'Mar', value: 5000, color: '#00ff99' },
-    { name: 'Apr', value: 4500, color: '#00ff99' },
-    { name: 'May', value: 6000, color: '#00ff99' },
-    { name: 'Jun', value: 5500, color: '#00ff99' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/admin/dashboard');
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard data');
+        }
+        const data = await response.json();
+        
+        setStats({
+          totalProducts: data.totalProducts || 0,
+          totalUsers: data.totalUsers || 0,
+          totalDownloads: data.totalDownloads || 0,
+          totalRevenue: data.totalRevenue || 0,
+          monthlyGrowth: data.monthlyGrowth || 0,
+          conversionRate: data.conversionRate || 0,
+          averageRating: data.averageRating || 0
+        });
+        
+        setRecentDownloads(data.recentDownloads || []);
+        setTopProducts(data.topProducts || []);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const categoryData: ChartData[] = [
-    { name: 'Graphics', value: 35, color: '#00ff99' },
-    { name: 'Templates', value: 25, color: '#0099cc' },
-    { name: 'Icons', value: 20, color: '#ff6b6b' },
-    { name: 'Fonts', value: 15, color: '#ffd93d' },
-    { name: 'Others', value: 5, color: '#6c5ce7' },
-  ];
+    fetchDashboardData();
+  }, []);
 
-  const topProducts = [
-    {
-      id: 1,
-      name: 'Vibrant Background Pack',
-      sales: 245,
-      revenue: '$2,450',
-      rating: 4.8,
-      thumbnail: '/api/placeholder/60/60'
-    },
-    {
-      id: 2,
-      name: 'Modern UI Kit',
-      sales: 189,
-      revenue: '$1,890',
-      rating: 4.9,
-      thumbnail: '/api/placeholder/60/60'
-    },
-    {
-      id: 3,
-      name: '3D Icon Collection',
-      sales: 156,
-      revenue: '$1,560',
-      rating: 4.7,
-      thumbnail: '/api/placeholder/60/60'
-    },
-    {
-      id: 4,
-      name: 'Typography Bundle',
-      sales: 134,
-      revenue: '$1,340',
-      rating: 4.6,
-      thumbnail: '/api/placeholder/60/60'
-    },
-  ];
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'sale',
-      message: 'New purchase: Vibrant Background Pack',
-      time: '2 minutes ago',
-      icon: <ShoppingBag size={16} className="text-green-400" />
+  const columns = useMemo(() => [
+    columnHelper.accessor('customerName', {
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Customer" />
+      ),
+      cell: ({ getValue, row }) => (
+        <div>
+          <span className="text-white font-medium">{getValue()}</span>
+          <br />
+          <span className="text-gray-400 text-sm">{row.original.customerEmail}</span>
+        </div>
+      ),
+    }),
+    columnHelper.accessor('productTitle', {
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Product" />
+      ),
+      cell: ({ getValue }) => (
+        <span className="text-gray-300">{getValue()}</span>
+      ),
+    }),
+    columnHelper.accessor('productPrice', {
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Price" />
+      ),
+      cell: ({ getValue }) => (
+        <span className="text-white">${getValue()}</span>
+      ),
+    }),
+    columnHelper.accessor('downloadedAt', {
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Downloaded" />
+      ),
+      cell: ({ getValue }) => (
+        <span className="text-gray-400">{formatDate(getValue())}</span>
+      ),
+    }),
+  ], []);
+
+  const table = useReactTable({
+    data: recentDownloads,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 5,
+      },
     },
-    {
-      id: 2,
-      type: 'user',
-      message: 'New user registration: john@example.com',
-      time: '5 minutes ago',
-      icon: <Users size={16} className="text-blue-400" />
-    },
-    {
-      id: 3,
-      type: 'download',
-      message: 'Product downloaded: Modern UI Kit',
-      time: '8 minutes ago',
-      icon: <Download size={16} className="text-purple-400" />
-    },
-    {
-      id: 4,
-      type: 'review',
-      message: 'New 5-star review on 3D Icon Collection',
-      time: '12 minutes ago',
-      icon: <Star size={16} className="text-yellow-400" />
-    },
-  ];
+  });
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard Overview</h1>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
           <p className="text-gray-400 mt-1">Welcome back! Here's what's happening with your store.</p>
         </div>
-        
-        <div className="flex items-center gap-3">
-          <select 
-            value={timeRange} 
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-2 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-          >
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-          </select>
+        <div className="flex gap-3">
+          <Button variant="outline" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Button className="bg-[#00ff99] text-black hover:bg-[#00cc7a]">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <motion.div
-            key={stat.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2f2f2f] hover:border-[#00ff99]/30 transition-all"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-xl bg-[#0f0f0f] ${stat.color}`}>
-                {stat.icon}
-              </div>
-              <div className={`flex items-center gap-1 text-sm ${
-                stat.change > 0 ? 'text-green-400' : 'text-red-400'
-              }`}>
-                {stat.change > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                {Math.abs(stat.change)}%
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-1">{stat.value}</h3>
-            <p className="text-gray-400 text-sm">{stat.title}</p>
-          </motion.div>
-        ))}
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Products</CardTitle>
+            <Package className="h-4 w-4 text-[#00ff99]" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold text-white">{stats.totalProducts}</div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="text-green-400 flex items-center">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +12% from last month
+              </span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-[#00ff99]" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-white">{stats.totalUsers.toLocaleString()}</div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="text-blue-400 flex items-center">
+                ★{stats.averageRating.toFixed(1)} avg rating
+              </span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Downloads</CardTitle>
+            <Download className="h-4 w-4 text-[#00ff99]" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-2xl font-bold text-white">{stats.totalDownloads.toLocaleString()}</div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="text-green-400 flex items-center">
+                {stats.conversionRate}% conversion rate
+              </span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-400">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-[#00ff99]" />
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold text-white">${stats.totalRevenue.toLocaleString()}</div>
+            )}
+            <p className="text-xs text-gray-400 mt-1">
+              <span className="text-green-400 flex items-center">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +15% from last month
+              </span>
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Charts Row */}
+      {/* Charts and Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Chart */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2f2f2f]"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Revenue Trend</h3>
-            <BarChart3 size={20} className="text-gray-400" />
-          </div>
-          
-          <div className="h-64 flex items-end justify-between gap-2">
-            {revenueData.map((item, index) => (
-              <div key={item.name} className="flex-1 flex flex-col items-center">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${(item.value / 6000) * 100}%` }}
-                  transition={{ delay: 0.6 + index * 0.1, duration: 0.5 }}
-                  className="w-full bg-[#00ff99] rounded-t-lg mb-2 min-h-[20px]"
-                />
-                <span className="text-xs text-gray-400">{item.name}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        {/* Recent Downloads */}
+        <Card className="bg-[#1f1f1f] border-[#2f2f2f]">
+          <CardHeader>
+            <CardTitle className="text-white">Recent Downloads</CardTitle>
+            <CardDescription className="text-gray-400">
+              Latest product downloads
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <DataTableSkeleton
+                columnCount={4}
+                rowCount={5}
+                filterCount={0}
+                cellWidths={["12rem", "8rem", "8rem", "8rem"]}
+                withViewOptions={false}
+                withPagination={false}
+              />
+            ) : recentDownloads.length === 0 ? (
+              <div className="text-gray-400 text-center py-8">No downloads found</div>
+            ) : (
+              <DataTable table={table} className="border-[#2f2f2f]" />
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Category Distribution */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2f2f2f]"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Category Distribution</h3>
-            <PieChart size={20} className="text-gray-400" />
-          </div>
-          
-          <div className="space-y-4">
-            {categoryData.map((item, index) => (
-              <motion.div
-                key={item.name}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 + index * 0.1 }}
-                className="flex items-center justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <span className="text-gray-300">{item.name}</span>
-                </div>
-                <span className="text-white font-medium">{item.value}%</span>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Products */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2f2f2f]"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Top Products</h3>
-            <Star size={20} className="text-gray-400" />
-          </div>
-          
-          <div className="space-y-4">
-            {topProducts.map((product, index) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8 + index * 0.1 }}
-                className="flex items-center gap-4 p-3 rounded-xl hover:bg-[#0f0f0f] transition-colors"
-              >
-                <div className="w-12 h-12 bg-[#2f2f2f] rounded-lg flex items-center justify-center">
-                  <Eye size={20} className="text-gray-400" />
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader>
+            <CardTitle className="text-white">Top Products</CardTitle>
+            <CardDescription className="text-gray-400">
+              Most downloaded products
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-[#0f0f0f] border border-[#2f2f2f]">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-10 w-10 rounded-lg" />
+                        <div className="space-y-1">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-20" />
+                        </div>
+                      </div>
+                      <div className="text-right space-y-1">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <h4 className="text-white font-medium">{product.name}</h4>
-                  <div className="flex items-center gap-4 mt-1">
-                    <span className="text-sm text-gray-400">{product.sales} sales</span>
-                    <div className="flex items-center gap-1">
-                      <Star size={12} className="text-yellow-400 fill-current" />
-                      <span className="text-sm text-gray-400">{product.rating}</span>
+              ) : topProducts.length === 0 ? (
+                <div className="text-gray-400 text-center py-4">No products found</div>
+              ) : (
+                topProducts.map((product, index) => (
+                  <div key={product.id} className="flex items-center justify-between p-3 rounded-lg bg-[#0f0f0f] border border-[#2f2f2f]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-[#00ff99] rounded-lg flex items-center justify-center">
+                        <span className="text-black font-bold text-sm">{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{product.title}</p>
+                        <p className="text-gray-400 text-sm">{product.downloadCount} downloads</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white font-medium">${Number(product.revenue).toLocaleString()}</p>
+                      <p className="text-gray-400 text-sm">${product.price} each</p>
                     </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-white font-semibold">{product.revenue}</div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2f2f2f]"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
-            <Activity size={20} className="text-gray-400" />
-          </div>
-          
-          <div className="space-y-4">
-            {recentActivity.map((activity, index) => (
-              <motion.div
-                key={activity.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.9 + index * 0.1 }}
-                className="flex items-start gap-3 p-3 rounded-xl hover:bg-[#0f0f0f] transition-colors"
-              >
-                <div className="p-2 rounded-lg bg-[#0f0f0f] mt-1">
-                  {activity.icon}
-                </div>
-                <div className="flex-1">
-                  <p className="text-gray-300 text-sm">{activity.message}</p>
-                  <span className="text-xs text-gray-500">{activity.time}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader>
+            <CardTitle className="text-white">Conversion Rate</CardTitle>
+            <CardDescription className="text-gray-400">
+              Percentage of visitors who make a purchase
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-white">{stats.conversionRate}%</span>
+                <span className="text-green-400 text-sm flex items-center">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  +0.3% from last month
+                </span>
+              </div>
+              <Progress value={stats.conversionRate * 10} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+          <CardHeader>
+            <CardTitle className="text-white">Monthly Growth</CardTitle>
+            <CardDescription className="text-gray-400">
+              User growth compared to previous month
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-2xl font-bold text-white">{stats.monthlyGrowth}%</span>
+                <span className="text-green-400 text-sm flex items-center">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  Excellent growth
+                </span>
+              </div>
+              <Progress value={stats.monthlyGrowth * 4} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

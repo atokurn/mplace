@@ -119,9 +119,6 @@ const AddCategoryPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       // Here you would make the actual API call
       console.log('Creating category:', formData);
       

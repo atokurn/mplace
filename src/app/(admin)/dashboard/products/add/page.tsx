@@ -110,9 +110,6 @@ const AddProductPage = () => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       // In real implementation, upload files and create product
       console.log('Product data:', formData);
       

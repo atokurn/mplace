@@ -4,11 +4,15 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Github } from 'lucide-react';
 import Link from 'next/link';
+import { signIn, useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const LoginPage = () => {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { data: session } = useSession();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -52,12 +56,32 @@ const LoginPage = () => {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const result = await signIn('credentials', {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setErrors({ general: 'Invalid email or password' });
+      } else {
+        // Check user role and redirect accordingly
+        const response = await fetch('/api/auth/session');
+        const sessionData = await response.json();
+        
+        if (sessionData?.user?.role === 'admin') {
+          router.push('/dashboard');
+        } else {
+          router.push('/');
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrors({ general: 'An error occurred during login' });
+    } finally {
       setIsLoading(false);
-      console.log('Login attempt:', formData);
-      // Here you would typically handle the actual login logic
-    }, 2000);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -138,6 +162,12 @@ const LoginPage = () => {
             </div>
 
             {/* Login Form */}
+            {errors.general && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                {errors.general}
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Field */}
               <motion.div

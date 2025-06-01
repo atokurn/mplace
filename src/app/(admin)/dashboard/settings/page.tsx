@@ -1,802 +1,856 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
 import {
-  Save,
-  Upload,
+  Settings,
+  User,
+  Bell,
+  Shield,
+  Palette,
   Globe,
   Mail,
-  Shield,
   CreditCard,
-  Bell,
-  Palette,
   Database,
   Key,
-  Users,
-  FileText,
-  Camera,
+  Smartphone,
+  Monitor,
+  Moon,
+  Sun,
+  Save,
+  Upload,
+  Download,
+  Trash2,
   Eye,
   EyeOff
 } from 'lucide-react';
 
-interface SettingsData {
-  general: {
-    siteName: string;
-    siteDescription: string;
-    siteUrl: string;
-    logo: string;
-    favicon: string;
-    timezone: string;
-    language: string;
-  };
-  email: {
-    smtpHost: string;
-    smtpPort: string;
-    smtpUser: string;
-    smtpPassword: string;
-    fromEmail: string;
-    fromName: string;
-  };
-  payment: {
-    stripePublicKey: string;
-    stripeSecretKey: string;
-    paypalClientId: string;
-    paypalClientSecret: string;
-    currency: string;
-    taxRate: number;
-  };
-  security: {
-    twoFactorAuth: boolean;
-    sessionTimeout: number;
-    maxLoginAttempts: number;
-    passwordMinLength: number;
-    requireStrongPassword: boolean;
-  };
-  notifications: {
-    emailNotifications: boolean;
-    orderNotifications: boolean;
-    userRegistrations: boolean;
-    systemAlerts: boolean;
-  };
-  appearance: {
-    theme: string;
-    primaryColor: string;
-    secondaryColor: string;
-    fontFamily: string;
-  };
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+interface NotificationSettings {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  smsNotifications: boolean;
+  orderUpdates: boolean;
+  marketingEmails: boolean;
+  securityAlerts: boolean;
+}
+
+interface SecuritySettings {
+  twoFactorAuth: boolean;
+  loginAlerts: boolean;
+  sessionTimeout: string;
+  passwordExpiry: string;
+}
+
+interface AppearanceSettings {
+  theme: string;
+  language: string;
+  timezone: string;
+  dateFormat: string;
+  currency: string;
 }
 
 const SettingsPage = () => {
-  const [activeTab, setActiveTab] = useState('general');
-  const [settings, setSettings] = useState<SettingsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [showPasswords, setShowPasswords] = useState<{[key: string]: boolean}>({});
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Profile settings
+  const [profile, setProfile] = useState({
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+    phone: '+1 (555) 123-4567',
+    bio: 'Admin user managing the marketplace platform.',
+    avatar: '/api/placeholder/100/100'
+  });
 
-  // Mock data - replace with actual API call
-  useEffect(() => {
-    const mockSettings: SettingsData = {
-      general: {
-        siteName: 'PIXEL Digital Marketplace',
-        siteDescription: 'Premium digital assets for creative professionals',
-        siteUrl: 'https://pixel-marketplace.com',
-        logo: '/logo.png',
-        favicon: '/favicon.ico',
-        timezone: 'UTC',
-        language: 'en'
-      },
-      email: {
-        smtpHost: 'smtp.gmail.com',
-        smtpPort: '587',
-        smtpUser: 'noreply@pixel-marketplace.com',
-        smtpPassword: '••••••••',
-        fromEmail: 'noreply@pixel-marketplace.com',
-        fromName: 'PIXEL Marketplace'
-      },
-      payment: {
-        stripePublicKey: 'pk_test_••••••••',
-        stripeSecretKey: 'sk_test_••••••••',
-        paypalClientId: 'AXxxx••••••••',
-        paypalClientSecret: '••••••••',
-        currency: 'USD',
-        taxRate: 10
-      },
-      security: {
-        twoFactorAuth: true,
-        sessionTimeout: 30,
-        maxLoginAttempts: 5,
-        passwordMinLength: 8,
-        requireStrongPassword: true
-      },
-      notifications: {
-        emailNotifications: true,
-        orderNotifications: true,
-        userRegistrations: true,
-        systemAlerts: true
-      },
-      appearance: {
-        theme: 'dark',
-        primaryColor: '#00ff99',
-        secondaryColor: '#0099ff',
-        fontFamily: 'Inter'
-      }
-    };
-    
-    setTimeout(() => {
-      setSettings(mockSettings);
-      setLoading(false);
-    }, 1000);
-  }, []);
+  // Password settings
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
 
-  const handleSave = async () => {
-    setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setSaving(false);
+  // Notification settings
+  const [notifications, setNotifications] = useState<NotificationSettings>({
+    emailNotifications: true,
+    pushNotifications: true,
+    smsNotifications: false,
+    orderUpdates: true,
+    marketingEmails: false,
+    securityAlerts: true
+  });
+
+  // Security settings
+  const [security, setSecurity] = useState<SecuritySettings>({
+    twoFactorAuth: true,
+    loginAlerts: true,
+    sessionTimeout: '30',
+    passwordExpiry: '90'
+  });
+
+  // Appearance settings
+  const [appearance, setAppearance] = useState<AppearanceSettings>({
+    theme: 'dark',
+    language: 'en',
+    timezone: 'UTC-5',
+    dateFormat: 'MM/DD/YYYY',
+    currency: 'USD'
+  });
+
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    // API call would go here
+    setLoading(false);
     // Show success message
   };
 
-  const togglePasswordVisibility = (field: string) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-
-  const updateSettings = (section: keyof SettingsData, field: string, value: any) => {
-    if (!settings) return;
+  const handleChangePassword = async () => {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
     
-    setSettings(prev => ({
-      ...prev!,
-      [section]: {
-        ...prev![section],
-        [field]: value
-      }
-    }));
+    setLoading(true);
+    // API call would go here
+    setLoading(false);
+    setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    // Show success message
   };
 
-  const tabs = [
-    { id: 'general', label: 'General', icon: Globe },
-    { id: 'email', label: 'Email', icon: Mail },
-    { id: 'payment', label: 'Payment', icon: CreditCard },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'appearance', label: 'Appearance', icon: Palette }
+  const handleNotificationChange = (key: keyof NotificationSettings, value: boolean) => {
+    setNotifications(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleSecurityChange = (key: keyof SecuritySettings, value: boolean | string) => {
+    setSecurity(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleAppearanceChange = (key: keyof AppearanceSettings, value: string) => {
+    setAppearance(prev => ({ ...prev, [key]: value }));
+  };
+
+  const languages = [
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Español' },
+    { value: 'fr', label: 'Français' },
+    { value: 'de', label: 'Deutsch' },
+    { value: 'it', label: 'Italiano' },
+    { value: 'pt', label: 'Português' }
   ];
 
-  if (loading || !settings) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#00ff99] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading settings...</p>
-        </div>
-      </div>
-    );
-  }
+  const timezones = [
+    { value: 'UTC-12', label: '(UTC-12:00) International Date Line West' },
+    { value: 'UTC-8', label: '(UTC-08:00) Pacific Time' },
+    { value: 'UTC-5', label: '(UTC-05:00) Eastern Time' },
+    { value: 'UTC+0', label: '(UTC+00:00) Greenwich Mean Time' },
+    { value: 'UTC+1', label: '(UTC+01:00) Central European Time' },
+    { value: 'UTC+8', label: '(UTC+08:00) China Standard Time' }
+  ];
+
+  const currencies = [
+    { value: 'USD', label: 'US Dollar ($)' },
+    { value: 'EUR', label: 'Euro (€)' },
+    { value: 'GBP', label: 'British Pound (£)' },
+    { value: 'JPY', label: 'Japanese Yen (¥)' },
+    { value: 'CAD', label: 'Canadian Dollar (C$)' },
+    { value: 'AUD', label: 'Australian Dollar (A$)' }
+  ];
 
   return (
-    <div className="min-h-screen bg-black p-6">
-      <div className="mx-auto">
+    <div className="space-y-6">
       {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-            <p className="text-gray-400">Manage your marketplace configuration</p>
-          </div>
-          
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-[#00ff99] text-black rounded-xl font-medium hover:bg-[#00cc77] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-4 md:mt-0"
-          >
-            {saving ? (
-              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Save size={20} />
-            )}
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-[#0f0f0f] rounded-2xl p-6 border border-[#2f2f2f] sticky top-6">
-              <nav className="space-y-2">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
-                        activeTab === tab.id
-                          ? 'bg-[#00ff99] text-black'
-                          : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
-                      }`}
-                    >
-                      <Icon size={20} />
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="lg:col-span-3">
-            <div className="bg-[#0f0f0f] rounded-2xl p-8 border border-[#2f2f2f]">
-              {/* General Settings */}
-              {activeTab === 'general' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">General Settings</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Site Name
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.general.siteName}
-                        onChange={(e) => updateSettings('general', 'siteName', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Site URL
-                      </label>
-                      <input
-                        type="url"
-                        value={settings.general.siteUrl}
-                        onChange={(e) => updateSettings('general', 'siteUrl', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Site Description
-                    </label>
-                    <textarea
-                      value={settings.general.siteDescription}
-                      onChange={(e) => updateSettings('general', 'siteDescription', e.target.value)}
-                      rows={3}
-                      className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Timezone
-                      </label>
-                      <select
-                        value={settings.general.timezone}
-                        onChange={(e) => updateSettings('general', 'timezone', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      >
-                        <option value="UTC">UTC</option>
-                        <option value="America/New_York">Eastern Time</option>
-                        <option value="America/Los_Angeles">Pacific Time</option>
-                        <option value="Europe/London">London</option>
-                        <option value="Asia/Tokyo">Tokyo</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Language
-                      </label>
-                      <select
-                        value={settings.general.language}
-                        onChange={(e) => updateSettings('general', 'language', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      >
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="ja">Japanese</option>
-                      </select>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Email Settings */}
-              {activeTab === 'email' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">Email Settings</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        SMTP Host
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.email.smtpHost}
-                        onChange={(e) => updateSettings('email', 'smtpHost', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        SMTP Port
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.email.smtpPort}
-                        onChange={(e) => updateSettings('email', 'smtpPort', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        SMTP Username
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.email.smtpUser}
-                        onChange={(e) => updateSettings('email', 'smtpUser', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        SMTP Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPasswords.smtpPassword ? 'text' : 'password'}
-                          value={settings.email.smtpPassword}
-                          onChange={(e) => updateSettings('email', 'smtpPassword', e.target.value)}
-                          className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 pr-12 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => togglePasswordVisibility('smtpPassword')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                        >
-                          {showPasswords.smtpPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        From Email
-                      </label>
-                      <input
-                        type="email"
-                        value={settings.email.fromEmail}
-                        onChange={(e) => updateSettings('email', 'fromEmail', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        From Name
-                      </label>
-                      <input
-                        type="text"
-                        value={settings.email.fromName}
-                        onChange={(e) => updateSettings('email', 'fromName', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Payment Settings */}
-              {activeTab === 'payment' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">Payment Settings</h2>
-                  
-                  <div className="space-y-8">
-                    {/* Stripe */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-4">Stripe Configuration</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Publishable Key
-                          </label>
-                          <input
-                            type="text"
-                            value={settings.payment.stripePublicKey}
-                            onChange={(e) => updateSettings('payment', 'stripePublicKey', e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Secret Key
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showPasswords.stripeSecret ? 'text' : 'password'}
-                              value={settings.payment.stripeSecretKey}
-                              onChange={(e) => updateSettings('payment', 'stripeSecretKey', e.target.value)}
-                              className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 pr-12 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => togglePasswordVisibility('stripeSecret')}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                            >
-                              {showPasswords.stripeSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* PayPal */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-4">PayPal Configuration</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Client ID
-                          </label>
-                          <input
-                            type="text"
-                            value={settings.payment.paypalClientId}
-                            onChange={(e) => updateSettings('payment', 'paypalClientId', e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Client Secret
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showPasswords.paypalSecret ? 'text' : 'password'}
-                              value={settings.payment.paypalClientSecret}
-                              onChange={(e) => updateSettings('payment', 'paypalClientSecret', e.target.value)}
-                              className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 pr-12 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => togglePasswordVisibility('paypalSecret')}
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                            >
-                              {showPasswords.paypalSecret ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* General Payment Settings */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-4">General Settings</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Default Currency
-                          </label>
-                          <select
-                            value={settings.payment.currency}
-                            onChange={(e) => updateSettings('payment', 'currency', e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                          >
-                            <option value="USD">USD - US Dollar</option>
-                            <option value="EUR">EUR - Euro</option>
-                            <option value="GBP">GBP - British Pound</option>
-                            <option value="JPY">JPY - Japanese Yen</option>
-                          </select>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Tax Rate (%)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={settings.payment.taxRate}
-                            onChange={(e) => updateSettings('payment', 'taxRate', parseFloat(e.target.value))}
-                            className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Security Settings */}
-              {activeTab === 'security' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">Security Settings</h2>
-                  
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                      <div>
-                        <h3 className="text-white font-medium">Two-Factor Authentication</h3>
-                        <p className="text-gray-400 text-sm">Add an extra layer of security to admin accounts</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.security.twoFactorAuth}
-                          onChange={(e) => updateSettings('security', 'twoFactorAuth', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                      </label>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Session Timeout (minutes)
-                        </label>
-                        <input
-                          type="number"
-                          min="5"
-                          max="1440"
-                          value={settings.security.sessionTimeout}
-                          onChange={(e) => updateSettings('security', 'sessionTimeout', parseInt(e.target.value))}
-                          className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Max Login Attempts
-                        </label>
-                        <input
-                          type="number"
-                          min="3"
-                          max="10"
-                          value={settings.security.maxLoginAttempts}
-                          onChange={(e) => updateSettings('security', 'maxLoginAttempts', parseInt(e.target.value))}
-                          className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Minimum Password Length
-                        </label>
-                        <input
-                          type="number"
-                          min="6"
-                          max="32"
-                          value={settings.security.passwordMinLength}
-                          onChange={(e) => updateSettings('security', 'passwordMinLength', parseInt(e.target.value))}
-                          className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                        <div>
-                          <h3 className="text-white font-medium">Strong Password Required</h3>
-                          <p className="text-gray-400 text-sm">Require uppercase, lowercase, numbers, and symbols</p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={settings.security.requireStrongPassword}
-                            onChange={(e) => updateSettings('security', 'requireStrongPassword', e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Notifications Settings */}
-              {activeTab === 'notifications' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">Notification Settings</h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                      <div>
-                        <h3 className="text-white font-medium">Email Notifications</h3>
-                        <p className="text-gray-400 text-sm">Receive notifications via email</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.notifications.emailNotifications}
-                          onChange={(e) => updateSettings('notifications', 'emailNotifications', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                      <div>
-                        <h3 className="text-white font-medium">Order Notifications</h3>
-                        <p className="text-gray-400 text-sm">Get notified when new orders are placed</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.notifications.orderNotifications}
-                          onChange={(e) => updateSettings('notifications', 'orderNotifications', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                      <div>
-                        <h3 className="text-white font-medium">User Registrations</h3>
-                        <p className="text-gray-400 text-sm">Get notified when new users register</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.notifications.userRegistrations}
-                          onChange={(e) => updateSettings('notifications', 'userRegistrations', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-4 bg-[#1a1a1a] rounded-xl">
-                      <div>
-                        <h3 className="text-white font-medium">System Alerts</h3>
-                        <p className="text-gray-400 text-sm">Receive important system notifications</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.notifications.systemAlerts}
-                          onChange={(e) => updateSettings('notifications', 'systemAlerts', e.target.checked)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff99]"></div>
-                      </label>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Appearance Settings */}
-              {activeTab === 'appearance' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <h2 className="text-2xl font-bold text-white mb-6">Appearance Settings</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Theme
-                      </label>
-                      <select
-                        value={settings.appearance.theme}
-                        onChange={(e) => updateSettings('appearance', 'theme', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      >
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                        <option value="auto">Auto</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Font Family
-                      </label>
-                      <select
-                        value={settings.appearance.fontFamily}
-                        onChange={(e) => updateSettings('appearance', 'fontFamily', e.target.value)}
-                        className="w-full bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                      >
-                        <option value="Inter">Inter</option>
-                        <option value="Roboto">Roboto</option>
-                        <option value="Open Sans">Open Sans</option>
-                        <option value="Poppins">Poppins</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Primary Color
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={settings.appearance.primaryColor}
-                          onChange={(e) => updateSettings('appearance', 'primaryColor', e.target.value)}
-                          className="w-12 h-12 bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={settings.appearance.primaryColor}
-                          onChange={(e) => updateSettings('appearance', 'primaryColor', e.target.value)}
-                          className="flex-1 bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Secondary Color
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={settings.appearance.secondaryColor}
-                          onChange={(e) => updateSettings('appearance', 'secondaryColor', e.target.value)}
-                          className="w-12 h-12 bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={settings.appearance.secondaryColor}
-                          onChange={(e) => updateSettings('appearance', 'secondaryColor', e.target.value)}
-                          className="flex-1 bg-[#1a1a1a] border border-[#2f2f2f] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00ff99] transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Settings</h1>
+          <p className="text-gray-400 mt-1">Manage your account and application preferences</p>
         </div>
       </div>
+
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5 bg-[#1a1a1a] border-[#2f2f2f]">
+          <TabsTrigger value="profile" className="data-[state=active]:bg-[#2f2f2f] text-gray-400 data-[state=active]:text-white">
+            <User className="h-4 w-4 mr-2" />
+            Profile
+          </TabsTrigger>
+          <TabsTrigger value="security" className="data-[state=active]:bg-[#2f2f2f] text-gray-400 data-[state=active]:text-white">
+            <Shield className="h-4 w-4 mr-2" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="data-[state=active]:bg-[#2f2f2f] text-gray-400 data-[state=active]:text-white">
+            <Bell className="h-4 w-4 mr-2" />
+            Notifications
+          </TabsTrigger>
+          <TabsTrigger value="appearance" className="data-[state=active]:bg-[#2f2f2f] text-gray-400 data-[state=active]:text-white">
+            <Palette className="h-4 w-4 mr-2" />
+            Appearance
+          </TabsTrigger>
+          <TabsTrigger value="system" className="data-[state=active]:bg-[#2f2f2f] text-gray-400 data-[state=active]:text-white">
+            <Database className="h-4 w-4 mr-2" />
+            System
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Profile Tab */}
+        <TabsContent value="profile" className="space-y-6">
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Profile Information
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Update your personal information and profile settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Avatar Section */}
+              <div className="flex items-center gap-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={profile.avatar} alt="Profile" />
+                  <AvatarFallback className="bg-[#2f2f2f] text-white text-lg">
+                    {profile.firstName[0]}{profile.lastName[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="space-y-2">
+                  <Button variant="outline" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                  <Button variant="outline" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                  <p className="text-xs text-gray-400">JPG, PNG or GIF. Max size 2MB.</p>
+                </div>
+              </div>
+
+              <Separator className="bg-[#2f2f2f]" />
+
+              {/* Personal Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-white">First Name</Label>
+                  <Input
+                    id="firstName"
+                    value={profile.firstName}
+                    onChange={(e) => setProfile(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="bg-[#0f0f0f] border-[#2f2f2f] text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-white">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    value={profile.lastName}
+                    onChange={(e) => setProfile(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="bg-[#0f0f0f] border-[#2f2f2f] text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile.email}
+                    onChange={(e) => setProfile(prev => ({ ...prev, email: e.target.value }))}
+                    className="bg-[#0f0f0f] border-[#2f2f2f] text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="text-white">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    value={profile.phone}
+                    onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                    className="bg-[#0f0f0f] border-[#2f2f2f] text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bio" className="text-white">Bio</Label>
+                <Textarea
+                  id="bio"
+                  value={profile.bio}
+                  onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                  className="bg-[#0f0f0f] border-[#2f2f2f] text-white min-h-[100px]"
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  className="bg-[#00ff99] text-black hover:bg-[#00cc77]"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Changes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Change Password */}
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Change Password
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Update your password to keep your account secure
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword" className="text-white">Current Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showPassword ? "text" : "password"}
+                      value={passwords.currentPassword}
+                      onChange={(e) => setPasswords(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      className="bg-[#0f0f0f] border-[#2f2f2f] text-white pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword" className="text-white">New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showNewPassword ? "text" : "password"}
+                      value={passwords.newPassword}
+                      onChange={(e) => setPasswords(prev => ({ ...prev, newPassword: e.target.value }))}
+                      className="bg-[#0f0f0f] border-[#2f2f2f] text-white pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-white">Confirm New Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={passwords.confirmPassword}
+                      onChange={(e) => setPasswords(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      className="bg-[#0f0f0f] border-[#2f2f2f] text-white pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleChangePassword}
+                  disabled={loading || !passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword}
+                  className="bg-[#00ff99] text-black hover:bg-[#00cc77]"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
+                  ) : (
+                    <Key className="h-4 w-4 mr-2" />
+                  )}
+                  Update Password
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6">
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Security Settings
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Configure security features to protect your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-white">Two-Factor Authentication</Label>
+                    <p className="text-sm text-gray-400">Add an extra layer of security to your account</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={security.twoFactorAuth}
+                      onCheckedChange={(checked) => handleSecurityChange('twoFactorAuth', checked)}
+                    />
+                    {security.twoFactorAuth && (
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-400">
+                        Enabled
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                <Separator className="bg-[#2f2f2f]" />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-white">Login Alerts</Label>
+                    <p className="text-sm text-gray-400">Get notified when someone logs into your account</p>
+                  </div>
+                  <Switch
+                    checked={security.loginAlerts}
+                    onCheckedChange={(checked) => handleSecurityChange('loginAlerts', checked)}
+                  />
+                </div>
+
+                <Separator className="bg-[#2f2f2f]" />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-white">Session Timeout (minutes)</Label>
+                    <Select value={security.sessionTimeout} onValueChange={(value) => handleSecurityChange('sessionTimeout', value)}>
+                      <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                        <SelectItem value="15" className="text-white hover:bg-[#2f2f2f]">15 minutes</SelectItem>
+                        <SelectItem value="30" className="text-white hover:bg-[#2f2f2f]">30 minutes</SelectItem>
+                        <SelectItem value="60" className="text-white hover:bg-[#2f2f2f]">1 hour</SelectItem>
+                        <SelectItem value="120" className="text-white hover:bg-[#2f2f2f]">2 hours</SelectItem>
+                        <SelectItem value="480" className="text-white hover:bg-[#2f2f2f]">8 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white">Password Expiry (days)</Label>
+                    <Select value={security.passwordExpiry} onValueChange={(value) => handleSecurityChange('passwordExpiry', value)}>
+                      <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                        <SelectItem value="30" className="text-white hover:bg-[#2f2f2f]">30 days</SelectItem>
+                        <SelectItem value="60" className="text-white hover:bg-[#2f2f2f]">60 days</SelectItem>
+                        <SelectItem value="90" className="text-white hover:bg-[#2f2f2f]">90 days</SelectItem>
+                        <SelectItem value="180" className="text-white hover:bg-[#2f2f2f]">180 days</SelectItem>
+                        <SelectItem value="365" className="text-white hover:bg-[#2f2f2f]">1 year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Sessions */}
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Active Sessions
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Manage your active login sessions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-[#0f0f0f] rounded-lg border border-[#2f2f2f]">
+                  <div className="flex items-center gap-3">
+                    <Monitor className="h-5 w-5 text-green-400" />
+                    <div>
+                      <p className="text-white font-medium">Current Session</p>
+                      <p className="text-sm text-gray-400">MacBook Pro • Chrome • New York, NY</p>
+                      <p className="text-xs text-gray-500">Last active: Now</p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="bg-green-500/20 text-green-400">
+                    Current
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-[#0f0f0f] rounded-lg border border-[#2f2f2f]">
+                  <div className="flex items-center gap-3">
+                    <Smartphone className="h-5 w-5 text-blue-400" />
+                    <div>
+                      <p className="text-white font-medium">Mobile Session</p>
+                      <p className="text-sm text-gray-400">iPhone • Safari • New York, NY</p>
+                      <p className="text-xs text-gray-500">Last active: 2 hours ago</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+                    Revoke
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Notifications Tab */}
+        <TabsContent value="notifications" className="space-y-6">
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Bell className="h-5 w-5" />
+                Notification Preferences
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Choose how you want to be notified about important events
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-white flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email Notifications
+                    </Label>
+                    <p className="text-sm text-gray-400">Receive notifications via email</p>
+                  </div>
+                  <Switch
+                    checked={notifications.emailNotifications}
+                    onCheckedChange={(checked) => handleNotificationChange('emailNotifications', checked)}
+                  />
+                </div>
+
+                <Separator className="bg-[#2f2f2f]" />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-white flex items-center gap-2">
+                      <Bell className="h-4 w-4" />
+                      Push Notifications
+                    </Label>
+                    <p className="text-sm text-gray-400">Receive push notifications in your browser</p>
+                  </div>
+                  <Switch
+                    checked={notifications.pushNotifications}
+                    onCheckedChange={(checked) => handleNotificationChange('pushNotifications', checked)}
+                  />
+                </div>
+
+                <Separator className="bg-[#2f2f2f]" />
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-white flex items-center gap-2">
+                      <Smartphone className="h-4 w-4" />
+                      SMS Notifications
+                    </Label>
+                    <p className="text-sm text-gray-400">Receive notifications via text message</p>
+                  </div>
+                  <Switch
+                    checked={notifications.smsNotifications}
+                    onCheckedChange={(checked) => handleNotificationChange('smsNotifications', checked)}
+                  />
+                </div>
+
+                <Separator className="bg-[#2f2f2f]" />
+
+                <div className="space-y-4">
+                  <h4 className="text-white font-medium">Notification Types</h4>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-white">Order Updates</Label>
+                      <p className="text-sm text-gray-400">New orders, status changes, and cancellations</p>
+                    </div>
+                    <Switch
+                      checked={notifications.orderUpdates}
+                      onCheckedChange={(checked) => handleNotificationChange('orderUpdates', checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-white">Marketing Emails</Label>
+                      <p className="text-sm text-gray-400">Product updates, newsletters, and promotions</p>
+                    </div>
+                    <Switch
+                      checked={notifications.marketingEmails}
+                      onCheckedChange={(checked) => handleNotificationChange('marketingEmails', checked)}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label className="text-white">Security Alerts</Label>
+                      <p className="text-sm text-gray-400">Login attempts, password changes, and security events</p>
+                    </div>
+                    <Switch
+                      checked={notifications.securityAlerts}
+                      onCheckedChange={(checked) => handleNotificationChange('securityAlerts', checked)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Appearance Tab */}
+        <TabsContent value="appearance" className="space-y-6">
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Appearance Settings
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Customize the look and feel of your dashboard
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-white">Theme</Label>
+                  <Select value={appearance.theme} onValueChange={(value) => handleAppearanceChange('theme', value)}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                      <SelectItem value="dark" className="text-white hover:bg-[#2f2f2f]">
+                        <div className="flex items-center gap-2">
+                          <Moon className="h-4 w-4" />
+                          Dark
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="light" className="text-white hover:bg-[#2f2f2f]">
+                        <div className="flex items-center gap-2">
+                          <Sun className="h-4 w-4" />
+                          Light
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="system" className="text-white hover:bg-[#2f2f2f]">
+                        <div className="flex items-center gap-2">
+                          <Monitor className="h-4 w-4" />
+                          System
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-white">Language</Label>
+                  <Select value={appearance.language} onValueChange={(value) => handleAppearanceChange('language', value)}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value} className="text-white hover:bg-[#2f2f2f]">
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-white">Timezone</Label>
+                  <Select value={appearance.timezone} onValueChange={(value) => handleAppearanceChange('timezone', value)}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                      {timezones.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value} className="text-white hover:bg-[#2f2f2f]">
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-white">Date Format</Label>
+                  <Select value={appearance.dateFormat} onValueChange={(value) => handleAppearanceChange('dateFormat', value)}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                      <SelectItem value="MM/DD/YYYY" className="text-white hover:bg-[#2f2f2f]">MM/DD/YYYY</SelectItem>
+                      <SelectItem value="DD/MM/YYYY" className="text-white hover:bg-[#2f2f2f]">DD/MM/YYYY</SelectItem>
+                      <SelectItem value="YYYY-MM-DD" className="text-white hover:bg-[#2f2f2f]">YYYY-MM-DD</SelectItem>
+                      <SelectItem value="DD MMM YYYY" className="text-white hover:bg-[#2f2f2f]">DD MMM YYYY</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-white">Currency</Label>
+                  <Select value={appearance.currency} onValueChange={(value) => handleAppearanceChange('currency', value)}>
+                    <SelectTrigger className="bg-[#0f0f0f] border-[#2f2f2f] text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a1a1a] border-[#2f2f2f]">
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.value} value={currency.value} className="text-white hover:bg-[#2f2f2f]">
+                          {currency.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* System Tab */}
+        <TabsContent value="system" className="space-y-6">
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                System Information
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                View system details and manage data
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Version</span>
+                    <span className="text-white">v2.1.0</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Last Updated</span>
+                    <span className="text-white">Jan 15, 2024</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Database Size</span>
+                    <span className="text-white">2.4 GB</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Storage Used</span>
+                    <span className="text-white">15.2 GB / 100 GB</span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Users</span>
+                    <span className="text-white">8,945</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Products</span>
+                    <span className="text-white">1,234</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Total Orders</span>
+                    <span className="text-white">5,678</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Uptime</span>
+                    <span className="text-white">99.9%</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data Management */}
+          <Card className="bg-[#1a1a1a] border-[#2f2f2f]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Data Management
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Export, import, and manage your data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Button variant="outline" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Data
+                </Button>
+                <Button variant="outline" className="border-[#2f2f2f] text-gray-400 hover:text-white">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Data
+                </Button>
+                <Button variant="outline" className="border-red-500 text-red-400 hover:bg-red-500/10">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear Cache
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
