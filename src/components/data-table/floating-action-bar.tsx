@@ -1,194 +1,181 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import {
-  Plus,
-  Download,
-  Upload,
-  Trash2,
-  Edit,
-  Copy,
-  Archive,
-  MoreHorizontal,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import type { Table } from '@tanstack/react-table';
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import type { Table } from "@tanstack/react-table";
+import { Loader, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
 
-interface FloatingActionBarProps<TData> {
-  table?: Table<TData>;
-  onExport?: () => void;
-  onImport?: () => void;
-  onBulkDelete?: (selectedIds: string[]) => void;
-  onBulkEdit?: (selectedIds: string[]) => void;
-  onBulkArchive?: (selectedIds: string[]) => void;
-  exportLabel?: string;
-  importLabel?: string;
-  className?: string;
-  position?: 'bottom-right' | 'bottom-center' | 'bottom-left';
+interface DataTableActionBarProps<TData>
+  extends React.ComponentProps<typeof motion.div> {
+  table: Table<TData>;
+  visible?: boolean;
+  container?: Element | DocumentFragment | null;
 }
 
-export function FloatingActionBar<TData>({
+function DataTableActionBar<TData>({
   table,
-  onExport,
-  onImport,
-  onBulkDelete,
-  onBulkEdit,
-  onBulkArchive,
-  exportLabel = 'Export',
-  importLabel = 'Import',
+  visible: visibleProp,
+  container: containerProp,
+  children,
   className,
-  position = 'bottom-center',
-}: FloatingActionBarProps<TData>) {
-  const selectedRows = table?.getFilteredSelectedRowModel().rows || [];
-  const hasSelection = selectedRows.length > 0;
-  const selectedIds = selectedRows.map(row => row.original as any).map(item => item.id);
+  ...props
+}: DataTableActionBarProps<TData>) {
+  const [mounted, setMounted] = React.useState(false);
 
-  // Only show when items are selected
-  const shouldShow = hasSelection;
+  React.useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const positionClasses = {
-    'bottom-right': 'bottom-6 right-6',
-    'bottom-center': 'bottom-6 left-1/2 transform -translate-x-1/2',
-    'bottom-left': 'bottom-6 left-6',
-  };
+  React.useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        table.toggleAllRowsSelected(false);
+      }
+    }
 
-  if (!shouldShow) return null;
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [table]);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      transition={{ duration: 0.2, ease: 'easeInOut' }}
-      className={cn(
-        'fixed z-50 flex items-center gap-2 rounded-2xl bg-[#1f1f1f] border border-[#2f2f2f] p-3 shadow-2xl backdrop-blur-sm',
-        positionClasses[position],
-        className
+  const container =
+    containerProp ?? (mounted ? globalThis.document?.body : null);
+
+  if (!container) return null;
+
+  const visible =
+    visibleProp ?? table.getFilteredSelectedRowModel().rows.length > 0;
+
+  return ReactDOM.createPortal(
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          role="toolbar"
+          aria-orientation="horizontal"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className={cn(
+            "fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit flex-wrap items-center justify-center gap-2 rounded-md border bg-background p-2 text-foreground shadow-sm",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </motion.div>
       )}
-    >
-      {/* Selection indicator when items are selected */}
-      {hasSelection && (
-        <div className="flex items-center gap-2 px-3 py-1 bg-[#00ff99]/10 rounded-lg border border-[#00ff99]/20">
-          <span className="text-[#00ff99] text-sm font-medium">
-            {selectedRows.length} selected
-          </span>
-        </div>
-      )}
-
-      {/* Bulk actions */}
-      <div className="flex items-center gap-3">
-        {onBulkEdit && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={() => onBulkEdit(selectedIds)}
-                variant="outline"
-                size="sm"
-                className="border-[#00ff99]/30 bg-[#00ff99]/10 hover:bg-[#00ff99]/20 text-[#00ff99] h-9 transition-colors duration-200"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Edit selected items</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {onBulkDelete && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={() => onBulkDelete(selectedIds)}
-                variant="outline"
-                size="sm"
-                className="border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 h-9 transition-colors duration-200"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete selected items</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {onBulkArchive && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={() => onBulkArchive(selectedIds)}
-                variant="outline"
-                size="sm"
-                className="border-[#2f2f2f] bg-[#2f2f2f]/50 hover:bg-[#2f2f2f] text-white h-9"
-              >
-                <Archive className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Archive selected items</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Secondary actions dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-[#2f2f2f] bg-[#2f2f2f]/50 hover:bg-[#2f2f2f] text-white h-9 px-3"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="bg-[#1f1f1f] border-[#2f2f2f] text-white"
-          >
-            {onExport && (
-              <DropdownMenuItem
-                onClick={onExport}
-                className="hover:bg-[#2f2f2f] focus:bg-[#2f2f2f]"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {exportLabel}
-              </DropdownMenuItem>
-            )}
-            {onImport && (
-              <DropdownMenuItem
-                onClick={onImport}
-                className="hover:bg-[#2f2f2f] focus:bg-[#2f2f2f]"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {importLabel}
-              </DropdownMenuItem>
-            )}
-            {(onExport || onImport) && <DropdownMenuSeparator className="bg-[#2f2f2f]" />}
-            <DropdownMenuItem
-              onClick={() => table?.toggleAllRowsSelected(false)}
-              className="hover:bg-[#2f2f2f] focus:bg-[#2f2f2f]"
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              Clear Selection
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </motion.div>
+    </AnimatePresence>,
+    container,
   );
 }
+
+interface DataTableActionBarActionProps
+  extends React.ComponentProps<typeof Button> {
+  tooltip?: string;
+  isPending?: boolean;
+}
+
+function DataTableActionBarAction({
+  size = "sm",
+  tooltip,
+  isPending,
+  disabled,
+  className,
+  children,
+  ...props
+}: DataTableActionBarActionProps) {
+  const trigger = (
+    <Button
+      variant="secondary"
+      size={size}
+      className={cn(
+        "gap-1.5 border border-secondary bg-secondary/50 hover:bg-secondary/70 [&>svg]:size-3.5",
+        size === "icon" ? "size-7" : "h-7",
+        className,
+      )}
+      disabled={disabled || isPending}
+      {...props}
+    >
+      {isPending ? <Loader className="animate-spin" /> : children}
+    </Button>
+  );
+
+  if (!tooltip) return trigger;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipContent
+        sideOffset={6}
+        className="border bg-accent font-semibold text-foreground dark:bg-zinc-900 [&>span]:hidden"
+      >
+        <p>{tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+interface DataTableActionBarSelectionProps<TData> {
+  table: Table<TData>;
+}
+
+function DataTableActionBarSelection<TData>({
+  table,
+}: DataTableActionBarSelectionProps<TData>) {
+  const onClearSelection = React.useCallback(() => {
+    table.toggleAllRowsSelected(false);
+  }, [table]);
+
+  return (
+    <div className="flex h-7 items-center rounded-md border pr-1 pl-2.5">
+      <span className="whitespace-nowrap text-xs">
+        {table.getFilteredSelectedRowModel().rows.length} selected
+      </span>
+      <Separator
+        orientation="vertical"
+        className="mr-1 ml-2 data-[orientation=vertical]:h-4"
+      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-5"
+            onClick={onClearSelection}
+          >
+            <X className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent
+          sideOffset={10}
+          className="flex items-center gap-2 border bg-accent px-2 py-1 font-semibold text-foreground dark:bg-zinc-900 [&>span]:hidden"
+        >
+          <p>Clear selection</p>
+          <kbd className="select-none rounded border bg-background px-1.5 py-px font-mono font-normal text-[0.7rem] text-foreground shadow-xs">
+            <abbr title="Escape" className="no-underline">
+              Esc
+            </abbr>
+          </kbd>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+export {
+  DataTableActionBar,
+  DataTableActionBarAction,
+  DataTableActionBarSelection,
+};
+
+// Legacy export for backward compatibility
+export { DataTableActionBar as FloatingActionBar };

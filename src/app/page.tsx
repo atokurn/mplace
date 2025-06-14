@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
-import HomeClient from '@/components/home/HomeClient';
+import HomeClient from '@/app/_components/features/public/home/HomeClient';
 
 export const metadata: Metadata = {
   title: 'PIXEL - Premium Digital Marketplace',
@@ -16,38 +16,29 @@ export const metadata: Metadata = {
 // Fetch homepage data with SSR
 async function getHomePageData() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    
-    // Fetch featured products
-    const featuredResponse = await fetch(`${baseUrl}/api/products?featured=true&limit=4`, {
-      next: { revalidate: 300 } // Revalidate every 5 minutes
-    });
-    
-    // Fetch regular products
-    const productsResponse = await fetch(`${baseUrl}/api/products?limit=8&page=1`, {
-      next: { revalidate: 300 }
-    });
-    
-    // Fetch analytics for stats
-    const analyticsResponse = await fetch(`${baseUrl}/api/analytics?metric=all&period=30d`, {
-      next: { revalidate: 600 } // Revalidate every 10 minutes
-    });
-
-    const featuredData = featuredResponse.ok ? await featuredResponse.json() : { products: [] };
-    const productsData = productsResponse.ok ? await productsResponse.json() : { products: [] };
-    const analyticsData = analyticsResponse.ok ? await analyticsResponse.json() : { data: null };
-
+    // Use direct database queries instead of API routes
+    // For now, return fallback data until API routes are implemented
     return {
-      featuredProducts: featuredData.products || [],
-      products: productsData.products || [],
-      stats: analyticsData.data?.overview || null
+      featuredProducts: [],
+      products: [],
+      stats: {
+        totalUsers: 0,
+        totalProducts: 0,
+        totalOrders: 0,
+        totalRevenue: 0
+      }
     };
   } catch (error) {
     console.error('Error fetching homepage data:', error);
     return {
       featuredProducts: [],
       products: [],
-      stats: null
+      stats: {
+        totalUsers: 0,
+        totalProducts: 0,
+        totalOrders: 0,
+        totalRevenue: 0
+      }
     };
   }
 }

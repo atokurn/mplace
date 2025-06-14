@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
-import ContactClient from '@/components/contact/ContactClient';
+import ContactClient from '@/app/_components/features/public/contact/ContactClient';
 
 export const metadata: Metadata = {
   title: 'Contact Us - PIXEL Digital Marketplace',

@@ -9,7 +9,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const Header = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
   const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,7 +38,7 @@ const Header = () => {
     setUserMenuOpen(!userMenuOpen);
   };
 
-  const handleUserProfileClick = () => {
+  const onUserProfileClick = () => {
     if (!isLoggedIn) {
       router.push('/login');
     } else {
@@ -42,7 +46,7 @@ const Header = () => {
     }
   };
 
-  const handleLogout = () => {
+  const onLogout = () => {
     setIsLoggedIn(false);
     setUserMenuOpen(false);
     // Tambahkan logika logout lainnya di sini
@@ -160,7 +164,7 @@ const Header = () => {
             {/* User Profile */}
             <div className="relative">
               <motion.button
-                onClick={handleUserProfileClick}
+                onClick={onUserProfileClick}
                 className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -195,7 +199,7 @@ const Header = () => {
                         {language === 'en' ? 'Settings' : 'Pengaturan'}
                       </button>
                       <button
-                        onClick={handleLogout}
+                        onClick={onLogout}
                         className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
                       >
                         <LogOut size={16} className="mr-3" />
@@ -315,7 +319,7 @@ const Header = () => {
                     </motion.button>
                     <motion.button
                       onClick={() => {
-                        handleLogout();
+                        onLogout();
                         setMobileMenuOpen(false);
                       }}
                       className="flex items-center w-full text-left py-1 text-sm text-foreground hover:text-accent transition-colors"

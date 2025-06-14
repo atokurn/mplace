@@ -17,6 +17,8 @@ interface DataTableSkeletonProps extends React.ComponentProps<"div"> {
   withViewOptions?: boolean;
   withPagination?: boolean;
   shrinkZero?: boolean;
+  searchableColumnCount?: number;
+  filterableColumnCount?: number;
 }
 
 export function DataTableSkeleton({
@@ -27,6 +29,8 @@ export function DataTableSkeleton({
   withViewOptions = true,
   withPagination = true,
   shrinkZero = false,
+  searchableColumnCount,
+  filterableColumnCount,
   className,
   ...props
 }: DataTableSkeletonProps) {

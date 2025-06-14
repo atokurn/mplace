@@ -15,7 +15,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Header from '@/components/layout/Header';
-import ProductCard from '@/components/products/ProductCard';
+import ProductCard from '@/app/_components/shared/layouts/products/ProductCard';
 
 interface Product {
   id: number;

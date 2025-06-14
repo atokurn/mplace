@@ -23,7 +23,7 @@ const SignUpPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ 
       ...prev, 
@@ -74,7 +74,7 @@ const SignUpPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -84,13 +84,13 @@ const SignUpPage = () => {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      console.log('Sign up attempt:', formData);
+      console.log({signUpAttempt: formData});
       // Here you would typically handle the actual registration logic
     }, 2000);
   };
 
-  const handleSocialSignUp = (provider: string) => {
-    console.log(`Sign up with ${provider}`);
+  const onSocialSignUp = (provider: string) => {
+    console.log({socialSignUp: provider});
     // Handle social sign up logic here
   };
 
@@ -154,7 +154,7 @@ const SignUpPage = () => {
             {/* Social Sign Up Buttons */}
             <div className="space-y-3 mb-6">
               <motion.button
-                onClick={() => handleSocialSignUp('google')}
+                onClick={() => onSocialSignUp('google')}
                 className="w-full flex items-center justify-center space-x-3 bg-secondary hover:bg-accent hover:text-background border border-border rounded-xl py-3 px-4 transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -166,7 +166,7 @@ const SignUpPage = () => {
               </motion.button>
               
               <motion.button
-                onClick={() => handleSocialSignUp('github')}
+                onClick={() => onSocialSignUp('github')}
                 className="w-full flex items-center justify-center space-x-3 bg-secondary hover:bg-accent hover:text-background border border-border rounded-xl py-3 px-4 transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -187,7 +187,7 @@ const SignUpPage = () => {
             </div>
 
             {/* Sign Up Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-6">
               {/* Name Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <motion.div
@@ -204,7 +204,7 @@ const SignUpPage = () => {
                       type="text"
                       name="firstName"
                       value={formData.firstName}
-                      onChange={handleInputChange}
+                      onChange={onInputChange}
                       className={`w-full pl-12 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                         errors.firstName ? 'border-red-500' : 'border-border focus:border-accent'
                       }`}
@@ -236,7 +236,7 @@ const SignUpPage = () => {
                       type="text"
                       name="lastName"
                       value={formData.lastName}
-                      onChange={handleInputChange}
+                      onChange={onInputChange}
                       className={`w-full pl-12 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                         errors.lastName ? 'border-red-500' : 'border-border focus:border-accent'
                       }`}
@@ -270,7 +270,7 @@ const SignUpPage = () => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className={`w-full pl-12 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                       errors.email ? 'border-red-500' : 'border-border focus:border-accent'
                     }`}
@@ -303,7 +303,7 @@ const SignUpPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className={`w-full pl-12 pr-12 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                       errors.password ? 'border-red-500' : 'border-border focus:border-accent'
                     }`}
@@ -361,7 +361,7 @@ const SignUpPage = () => {
                     type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className={`w-full pl-12 pr-12 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                       errors.confirmPassword ? 'border-red-500' : 'border-border focus:border-accent'
                     }`}
@@ -398,7 +398,7 @@ const SignUpPage = () => {
                     type="checkbox"
                     name="agreeToTerms"
                     checked={formData.agreeToTerms}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className="w-4 h-4 text-accent bg-secondary border-border rounded focus:ring-accent focus:ring-2 mt-1"
                   />
                   <div className="flex-1">
@@ -434,7 +434,7 @@ const SignUpPage = () => {
                     type="checkbox"
                     name="subscribeNewsletter"
                     checked={formData.subscribeNewsletter}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className="w-4 h-4 text-accent bg-secondary border-border rounded focus:ring-accent focus:ring-2"
                   />
                   <label className="text-sm text-foreground/70">

@@ -21,7 +21,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
@@ -49,7 +49,7 @@ const LoginPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -84,8 +84,8 @@ const LoginPage = () => {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    console.log(`Login with ${provider}`);
+  const onSocialLogin = (provider: string) => {
+    console.log({socialLogin: provider});
     // Handle social login logic here
   };
 
@@ -129,7 +129,7 @@ const LoginPage = () => {
             {/* Social Login Buttons */}
             <div className="space-y-3 mb-6">
               <motion.button
-                onClick={() => handleSocialLogin('google')}
+                onClick={() => onSocialLogin('google')}
                 className="w-full flex items-center justify-center space-x-3 bg-secondary hover:bg-accent hover:text-background border border-border rounded-xl py-3 px-4 transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -141,7 +141,7 @@ const LoginPage = () => {
               </motion.button>
               
               <motion.button
-                onClick={() => handleSocialLogin('github')}
+                onClick={() => onSocialLogin('github')}
                 className="w-full flex items-center justify-center space-x-3 bg-secondary hover:bg-accent hover:text-background border border-border rounded-xl py-3 px-4 transition-all duration-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -168,7 +168,7 @@ const LoginPage = () => {
               </div>
             )}
             
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={onSubmit} className="space-y-6">
               {/* Email Field */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
@@ -184,7 +184,7 @@ const LoginPage = () => {
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className={`w-full pl-12 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                       errors.email ? 'border-red-500' : 'border-border focus:border-accent'
                     }`}
@@ -217,7 +217,7 @@ const LoginPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
-                    onChange={handleInputChange}
+                    onChange={onInputChange}
                     className={`w-full pl-12 pr-12 py-3 bg-secondary border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent transition-all duration-300 ${
                       errors.password ? 'border-red-500' : 'border-border focus:border-accent'
                     }`}

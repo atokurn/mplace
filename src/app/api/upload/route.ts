@@ -1,75 +1,67 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { 
-  generateUploadUrl, 
-  generateFileKey, 
-  validateFileType, 
-  ALLOWED_DESIGN_TYPES,
-  ALLOWED_IMAGE_TYPES 
-} from '@/lib/storage';
+import { NextRequest, NextResponse } from "next/server";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
+import { existsSync } from "fs";
 
-// POST /api/upload - Generate presigned URL for file upload
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
 
-    const body = await request.json();
-    const { fileName, fileType, uploadType } = body;
-    
-    if (!fileName || !fileType || !uploadType) {
+    if (!file) {
       return NextResponse.json(
-        { error: 'Missing required fields: fileName, fileType, uploadType' },
+        { error: "No file uploaded" },
         { status: 400 }
       );
     }
 
-    // Validate file type based on upload type
-    let allowedTypes: string[];
-    
-    switch (uploadType) {
-      case 'image':
-        allowedTypes = ALLOWED_IMAGE_TYPES;
-        break;
-      case 'product':
-        allowedTypes = ALLOWED_DESIGN_TYPES;
-        break;
-      default:
-        return NextResponse.json(
-          { error: 'Invalid upload type. Must be "image" or "product"' },
-          { status: 400 }
-        );
-    }
-
-    if (!validateFileType(fileType, allowedTypes)) {
+    // Validate file type (images only)
+    if (!file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: `Invalid file type. Allowed types: ${allowedTypes.join(', ')}` },
+        { error: "Only image files are allowed" },
         { status: 400 }
       );
     }
 
-    // Generate unique file key
-    const fileKey = generateFileKey(fileName, session.user.id);
-    
-    // Generate presigned URL
-    const uploadUrl = await generateUploadUrl(fileKey, fileType);
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { error: "File size must be less than 5MB" },
+        { status: 400 }
+      );
+    }
+
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, "");
+    const fileName = `${timestamp}-${originalName}`;
+    const filePath = path.join(uploadsDir, fileName);
+
+    // Convert file to buffer and save
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await writeFile(filePath, buffer);
+
+    // Return the public URL
+    const publicUrl = `/uploads/${fileName}`;
     
     return NextResponse.json({
-      uploadUrl,
-      fileKey,
-      message: 'Upload URL generated successfully'
+      url: publicUrl,
+      filename: fileName,
+      size: file.size,
+      type: file.type,
     });
   } catch (error) {
-    console.error('Upload URL generation error:', error);
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { error: 'Failed to generate upload URL' },
+      { error: "Failed to upload file" },
       { status: 500 }
     );
   }

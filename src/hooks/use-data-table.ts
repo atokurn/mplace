@@ -167,18 +167,25 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
 
   const filterableColumns = React.useMemo(() => {
-    if (enableAdvancedFilter) return [];
+    if (enableAdvancedFilter) {
+      // For advanced filter, include all columns that have meta information for filtering
+      return columns.filter((column) => column.meta && (column.meta.variant || column.meta.options));
+    }
 
     return columns.filter((column) => column.enableColumnFilter);
   }, [columns, enableAdvancedFilter]);
 
   const filterParsers = React.useMemo(() => {
-    if (enableAdvancedFilter) return {};
-
     return filterableColumns.reduce<
       Record<string, Parser<string> | Parser<string[]>>
     >((acc, column) => {
-      if (column.meta?.options) {
+      if (column.meta?.options || column.meta?.variant === 'multiSelect') {
+        acc[column.id ?? ""] = parseAsArrayOf(
+          parseAsString,
+          ARRAY_SEPARATOR,
+        ).withOptions(queryStateOptions);
+      } else if (column.meta?.variant === 'dateRange') {
+        // For date range filters, we need to handle array of timestamps
         acc[column.id ?? ""] = parseAsArrayOf(
           parseAsString,
           ARRAY_SEPARATOR,
@@ -188,7 +195,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       }
       return acc;
     }, {});
-  }, [filterableColumns, queryStateOptions, enableAdvancedFilter]);
+  }, [filterableColumns, queryStateOptions]);
 
   const [filterValues, setFilterValues] = useQueryStates(filterParsers);
 
@@ -201,57 +208,109 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
 
   const initialColumnFilters: ColumnFiltersState = React.useMemo(() => {
-    if (enableAdvancedFilter) return [];
+    if (!filterValues || typeof filterValues !== 'object' || Array.isArray(filterValues)) return [];
 
-    return Object.entries(filterValues).reduce<ColumnFiltersState>(
-      (filters, [key, value]) => {
-        if (value !== null) {
-          const processedValue = Array.isArray(value)
-            ? value
-            : typeof value === "string" && /[^a-zA-Z0-9]/.test(value)
-              ? value.split(/[^a-zA-Z0-9]+/).filter(Boolean)
-              : [value];
+    try {
+      return Object.entries(filterValues).reduce<ColumnFiltersState>(
+        (filters, [key, value]) => {
+          if (value !== null) {
+            const column = filterableColumns.find(col => col.id === key);
+            
+            let processedValue;
+            if (column?.meta?.variant === 'dateRange' && Array.isArray(value)) {
+              // For date range, convert string timestamps to numbers
+              processedValue = value.map(v => v ? Number(v) : undefined).filter(v => v !== undefined);
+            } else if (column?.meta?.variant === 'text') {
+              // For text filters, keep as single string
+              processedValue = Array.isArray(value) ? value[0] : String(value); // Ensure string for single value
+            } else if (column?.meta?.variant === 'multiSelect' || (column?.meta?.options && column.id === 'category')) {
+              // For multi-select and category filters, ensure array of strings
+              processedValue = Array.isArray(value) ? value.map(String) : [String(value)];
+            } else if (column?.meta?.variant === 'range' && column.id === 'price') {
+              // For price range filters, ensure array of two strings (numbers as strings)
+              processedValue = Array.isArray(value) && value.length === 2 ? value.map(String) : (Array.isArray(value) && value.length === 1 ? [String(value[0]), String(value[0])] : []);
+            } else if (column?.meta?.variant === 'range') {
+              // For other range filters, ensure array
+              processedValue = Array.isArray(value) ? value : [value];
+            } else if (column?.meta?.options) { // General faceted filters (like status)
+              processedValue = Array.isArray(value) ? value.map(String) : [String(value)];
+            } else {
+              // Default behavior - keep original value
+              processedValue = value;
+            }
 
-          filters.push({
-            id: key,
-            value: processedValue,
-          });
-        }
-        return filters;
-      },
-      [],
-    );
-  }, [filterValues, enableAdvancedFilter]);
+            if (processedValue !== undefined && ( (Array.isArray(processedValue) && processedValue.length > 0) || !Array.isArray(processedValue) ) ) {
+              filters.push({
+                id: key,
+                value: processedValue,
+              });
+            }
+          }
+          return filters;
+        },
+        [],
+      );
+    } catch (error) {
+      console.error('Error in initialColumnFilters:', error, 'filterValues:', filterValues);
+      return [];
+    }
+  }, [filterValues, filterableColumns]);
 
   const [columnFilters, setColumnFilters] =
     React.useState<ColumnFiltersState>(initialColumnFilters);
 
   const onColumnFiltersChange = React.useCallback(
     (updaterOrValue: Updater<ColumnFiltersState>) => {
-      if (enableAdvancedFilter) return;
-
       setColumnFilters((prev) => {
         const next =
           typeof updaterOrValue === "function"
             ? updaterOrValue(prev)
             : updaterOrValue;
 
-        const filterUpdates = next.reduce<
-          Record<string, string | string[] | null>
-        >((acc, filter) => {
-          if (filterableColumns.find((column) => column.id === filter.id)) {
-            acc[filter.id] = filter.value as string | string[];
-          }
-          return acc;
-        }, {});
+        if (enableAdvancedFilter) {
+          // For advanced filter, we handle all column filters
+          const filterUpdates = next.reduce<
+            Record<string, string | string[] | null>
+          >((acc, filter) => {
+            const column = filterableColumns.find(col => col.id === filter.id);
+            
+            if (column?.meta?.variant === 'dateRange' && Array.isArray(filter.value)) {
+              // For date range, convert numbers to strings for URL
+              acc[filter.id] = filter.value.map(v => v ? String(v) : '').filter(Boolean);
+            } else {
+              acc[filter.id] = filter.value as string | string[];
+            }
+            return acc;
+          }, {});
 
-        for (const prevFilter of prev) {
-          if (!next.some((filter) => filter.id === prevFilter.id)) {
-            filterUpdates[prevFilter.id] = null;
+          // Clear filters that are no longer present
+          for (const prevFilter of prev) {
+            if (!next.some((filter) => filter.id === prevFilter.id)) {
+              filterUpdates[prevFilter.id] = null;
+            }
           }
+
+          debouncedSetFilterValues(filterUpdates);
+        } else {
+          // For basic filter, only handle filterable columns
+          const filterUpdates = next.reduce<
+            Record<string, string | string[] | null>
+          >((acc, filter) => {
+            if (filterableColumns.find((column) => column.id === filter.id)) {
+              acc[filter.id] = filter.value as string | string[];
+            }
+            return acc;
+          }, {});
+
+          for (const prevFilter of prev) {
+            if (!next.some((filter) => filter.id === prevFilter.id)) {
+              filterUpdates[prevFilter.id] = null;
+            }
+          }
+
+          debouncedSetFilterValues(filterUpdates);
         }
 
-        debouncedSetFilterValues(filterUpdates);
         return next;
       });
     },

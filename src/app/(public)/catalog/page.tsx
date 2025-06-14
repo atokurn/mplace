@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
-import CatalogClient from '@/components/catalog/CatalogClient';
+import CatalogClient from '@/app/_components/features/public/catalog/CatalogClient';
 
 interface CatalogPageProps {
   searchParams: {

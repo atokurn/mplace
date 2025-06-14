@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
-import AboutClient from '@/components/about/AboutClient';
+import AboutClient from '@/app/_components/features/public/about/AboutClient';
 import { Users, Award, Globe, Zap, Heart, Target, Lightbulb, Shield } from 'lucide-react';
 
 export const metadata: Metadata = {

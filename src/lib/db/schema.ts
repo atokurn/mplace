@@ -19,19 +19,60 @@ export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
   title: text('title').notNull(),
   description: text('description').notNull(),
+  shortDescription: text('short_description'), // Brief product summary
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  originalPrice: decimal('original_price', { precision: 10, scale: 2 }), // For discount display
+  commercialPrice: decimal('commercial_price', { precision: 10, scale: 2 }), // Commercial license price
   categoryId: uuid('category_id').references(() => categories.id),
   category: text('category').notNull(), // Keep for backward compatibility
   tags: jsonb('tags').$type<string[]>().default([]),
+  
+  // Media fields
   imageUrl: text('image_url').notNull(),
+  thumbnailUrl: text('thumbnail_url'), // Optimized thumbnail
+  previewImages: jsonb('preview_images').$type<string[]>().default([]), // Additional preview images
+  
+  // File information
   fileUrl: text('file_url').notNull(),
   fileName: text('file_name').notNull(),
   fileSize: integer('file_size').notNull(),
+  fileFormat: text('file_format').notNull().default('unknown'), // e.g., 'svg', 'png', 'ai', 'psd'
+  fileType: text('file_type').notNull().default('digital'), // 'digital', 'template', 'font', 'vector'
+  
+  // Product specifications
+  dimensions: text('dimensions'), // e.g., '1920x1080', 'A4', 'Vector'
+  resolution: text('resolution'), // e.g., '300 DPI', 'Vector', '4K'
+  colorMode: text('color_mode'), // e.g., 'RGB', 'CMYK', 'Grayscale'
+  software: jsonb('software').$type<string[]>().default([]), // Compatible software
+  
+  // SEO and marketing
+  slug: text('slug').notNull().unique().default(''),
+  metaTitle: text('meta_title'),
+  metaDescription: text('meta_description'),
+  keywords: jsonb('keywords').$type<string[]>().default([]),
+  
+  // Statistics and status
   downloadCount: integer('download_count').default(0).notNull(),
+  viewCount: integer('view_count').default(0).notNull(),
+  likeCount: integer('like_count').default(0).notNull(),
+  rating: decimal('rating', { precision: 3, scale: 2 }).default('0.00'), // Average rating
+  reviewCount: integer('review_count').default(0).notNull(),
+  
+  // Product status
   isActive: boolean('is_active').default(true).notNull(),
+  isFeatured: boolean('is_featured').default(false).notNull(),
+  isNew: boolean('is_new').default(true).notNull(),
+  isBestseller: boolean('is_bestseller').default(false).notNull(),
+  
+  // Licensing and usage
+  licenseType: text('license_type').notNull().default('standard'), // 'standard', 'extended', 'commercial'
+  usageRights: jsonb('usage_rights').$type<string[]>().default([]), // Usage permissions
+  
+  // Timestamps
   createdBy: uuid('created_by').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  publishedAt: timestamp('published_at'),
 });
 
 // Reviews table
@@ -58,8 +99,9 @@ export const categories = pgTable('categories', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: text('name').notNull().unique(),
   description: text('description'),
-  slug: text('slug').notNull().unique(),
+  slug: text('slug').notNull().unique().default(''),
   imageUrl: text('image_url'),
+  parentId: uuid('parent_id').references(() => categories.id),
   isActive: boolean('is_active').default(true).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -163,10 +205,46 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type SelectUser = z.infer<typeof selectUserSchema>;
 
 export const insertProductSchema = createInsertSchema(products, {
-  title: z.string().min(1),
-  description: z.string().min(1),
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/),
-  category: z.string().min(1),
+  title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
+  description: z.string().min(1, 'Description is required'),
+  shortDescription: z.string().max(300, 'Short description must be less than 300 characters').optional(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
+  originalPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid original price format').optional(),
+  category: z.string().min(1, 'Category is required'),
+  tags: z.array(z.string()).default([]),
+  
+  // Media validation
+  imageUrl: z.string().url('Invalid image URL'),
+  thumbnailUrl: z.string().url('Invalid thumbnail URL').optional(),
+  previewImages: z.array(z.string().url()).default([]),
+  
+  // File validation
+  fileName: z.string().min(1, 'File name is required'),
+  fileSize: z.number().min(1, 'File size must be greater than 0'),
+  fileFormat: z.string().min(1, 'File format is required'),
+  fileType: z.enum(['digital', 'template', 'font', 'vector']).default('digital'),
+  
+  // Product specifications
+  dimensions: z.string().optional(),
+  resolution: z.string().optional(),
+  colorMode: z.string().optional(),
+  software: z.array(z.string()).default([]),
+  
+  // SEO fields
+  slug: z.string().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
+  metaTitle: z.string().max(60, 'Meta title must be less than 60 characters').optional(),
+  metaDescription: z.string().max(160, 'Meta description must be less than 160 characters').optional(),
+  keywords: z.array(z.string()).default([]),
+  
+  // Status fields
+  isActive: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+  isNew: z.boolean().default(true),
+  isBestseller: z.boolean().default(false),
+  
+  // Licensing
+  licenseType: z.enum(['standard', 'extended', 'commercial']).default('standard'),
+  usageRights: z.array(z.string()).default([]),
 });
 export const selectProductSchema = createSelectSchema(products);
 export type InsertProduct = z.infer<typeof insertProductSchema>;

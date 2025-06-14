@@ -65,10 +65,10 @@ async function seed() {
       
       if (existingProducts.length === 0) {
         await sql`
-          INSERT INTO products (title, description, price, category_id, category, tags, image_url, file_url, file_name, file_size, created_by)
+          INSERT INTO products (title, description, price, category_id, category, tags, image_url, file_url, file_name, file_size, slug, created_by)
           VALUES 
-            ('Modern UI Kit', 'A comprehensive UI kit for modern web applications', 29.99, ${templatesCategory[0].id}, 'Templates', '[]'::jsonb, '/images/products/ui-kit.jpg', '/files/ui-kit.zip', 'modern-ui-kit.zip', 15728640, ${adminUser.id}),
-            ('Minimalist Icon Pack', 'Clean and minimalist icon collection for your projects', 19.99, ${iconsCategory[0].id}, 'Icons', '[]'::jsonb, '/images/products/icon-pack.jpg', '/files/icon-pack.zip', 'minimalist-icons.zip', 5242880, ${adminUser.id})
+            ('Modern UI Kit', 'A comprehensive UI kit for modern web applications', 29.99, ${templatesCategory[0].id}, 'Templates', '[]'::jsonb, '/images/products/ui-kit.jpg', '/files/ui-kit.zip', 'modern-ui-kit.zip', 15728640, 'modern-ui-kit', ${adminUser.id}),
+            ('Minimalist Icon Pack', 'Clean and minimalist icon collection for your projects', 19.99, ${iconsCategory[0].id}, 'Icons', '[]'::jsonb, '/images/products/icon-pack.jpg', '/files/icon-pack.zip', 'minimalist-icons.zip', 5242880, 'minimalist-icon-pack', ${adminUser.id})
         `;
         console.log('✅ Sample products created');
       } else {
