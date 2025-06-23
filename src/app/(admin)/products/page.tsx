@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 
 import type { SearchParams } from "@/types";
 
-// import { FeatureFlagsProvider } from "@/app/_components/features/admin/products/feature-flags-provider";
 import { ProductTableServer } from "@/app/_components/features/admin/products/ProductTableServer";
 import { productsSearchParamsCache } from "@/lib/search-params";
 
@@ -27,7 +26,6 @@ export default async function ProductsPage(props: ProductsPageProps) {
 
   return (
     <Shell variant="sidebar" className="gap-2">
-      {/* <FeatureFlagsProvider> */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -66,7 +64,6 @@ export default async function ProductsPage(props: ProductsPageProps) {
             <ProductTableServer searchParams={searchParams} />
           </React.Suspense>
         </div>
-      {/* </FeatureFlagsProvider> */}
     </Shell>
   );
 }

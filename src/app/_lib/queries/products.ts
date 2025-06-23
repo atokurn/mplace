@@ -220,7 +220,7 @@ export async function getProductCategoryCounts() {
           },
           {} as Record<string, number>,
         );
-        console.log({categoryCounts: result});
+
         return result;
       } catch (error) {
         console.error("Error fetching product category counts:", error);

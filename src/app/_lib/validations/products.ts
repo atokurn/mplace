@@ -96,6 +96,8 @@ export const deleteProductsSchema = z.object({
 export const updateProductsSchema = z.object({
   ids: z.array(z.string().uuid("Invalid product ID")),
   isActive: z.boolean().optional(),
+  categoryId: z.string().optional().nullable(),
+  category: z.string().optional(),
 });
 
 export type CreateProductSchema = z.infer<typeof createProductSchema>;

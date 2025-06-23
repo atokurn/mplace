@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ProductTableActionBar } from "./ProductTableActionBar";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -29,25 +30,23 @@ import { type ColumnDef } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   Calendar,
-  Download,
   Eye,
   FileText,
   MoreHorizontal,
   Pencil,
-  Tag,
-  Trash2,
-  CheckCircle2,
-  XCircle,
   Copy,
   Package,
   DollarSign,
-  Activity
+  Activity,
+  Tag,
+  Download,
+  Trash2
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 import { toast } from "sonner";
-import { updateProducts, deleteProducts } from "@/app/_lib/actions/products";
+
 import { formatPrice } from '@/lib/utils';
 
 interface ProductTableClientProps {
@@ -118,13 +117,13 @@ function createColumns(
               </TooltipTrigger>
               <TooltipContent side="right" className="p-3 max-w-xs">
                 <div className="space-y-3">
-                  <div className="relative h-32 w-full rounded-md overflow-hidden">
+                  <div className="relative h-40 w-40 rounded-md overflow-hidden mx-auto">
                     <Image
                       src={product.imageUrl || '/placeholder.svg'}
                       alt={product.title}
                       fill
                       className="object-cover"
-                      sizes="450px"
+                      sizes="500px"
                     />
                   </div>
                   <div className="space-y-1">
@@ -349,7 +348,6 @@ function createColumns(
 
 export function ProductTableClient({ productsPromise, categoryCounts = {}, priceRange }: ProductTableClientProps) {
   const { data, pageCount } = React.use(productsPromise);
-  const [isPending, startTransition] = React.useTransition();
   
   // Generate category options from actual data
   const categoryOptions = React.useMemo(() => {
@@ -403,54 +401,7 @@ export function ProductTableClient({ productsPromise, categoryCounts = {}, price
     },
   });
 
-  const onBulkStatusChange = (productsToUpdate: Product[], isActive: boolean) => {
-    startTransition(async () => {
-      const result = await updateProducts({
-        ids: productsToUpdate.map(p => p.id),
-        isActive,
-      });
-      
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(`${productsToUpdate.length} products updated to ${isActive ? 'active' : 'inactive'}`);
-        table.toggleAllRowsSelected(false);
-      }
-    });
-  };
 
-  const onBulkDelete = (productsToDelete: Product[]) => {
-    startTransition(async () => {
-      const result = await deleteProducts({
-        ids: productsToDelete.map(p => p.id),
-      });
-      
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(`${productsToDelete.length} products deleted`);
-        table.toggleAllRowsSelected(false);
-      }
-    });
-  };
-
-  const onBulkExport = (productsToExport: Product[]) => {
-    const csvContent = "data:text/csv;charset=utf-8," +
-      "ID,Title,Category,Price,Status,Created At\n" + // Add more headers as needed
-      productsToExport.map(p => 
-        `"${p.id}","${p.title}","${p.category || p.categoryId}","${p.price}","${p.isActive ? 'Active' : 'Inactive'}          ","${p.createdAt}"`
-      ).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "products.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    toast.success(`${productsToExport.length} products exported`);
-  };
 
   return (
     <div className="space-y-4">
@@ -458,105 +409,8 @@ export function ProductTableClient({ productsPromise, categoryCounts = {}, price
         <DataTableToolbar table={table} />
       </DataTable>
       
-      <DataTableActionBar table={table}>
-        <DataTableActionBarSelection table={table} />
-        <Separator
-          orientation="vertical"
-          className="hidden data-[orientation=vertical]:h-5 sm:block"
-        />
-        <div className="flex items-center gap-1.5">
-          <DataTableActionBarAction
-            size="icon"
-            tooltip="Activate products"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              onBulkStatusChange(selectedRows, true);
-            }}
-          >
-            <CheckCircle2 />
-          </DataTableActionBarAction>
-          <DataTableActionBarAction
-            size="icon"
-            tooltip="Deactivate products"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              onBulkStatusChange(selectedRows, false);
-            }}
-          >
-            <XCircle />
-          </DataTableActionBarAction>
-          <DataTableActionBarAction
-            size="icon"
-            tooltip="Export products"
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              if (selectedRows.length > 0) {
-                onBulkExport(selectedRows);
-              }
-            }}
-          >
-            <Download />
-          </DataTableActionBarAction>
-          <DataTableActionBarAction
-            size="icon"
-            tooltip="Delete products"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              if (confirm(`Are you sure you want to delete ${selectedRows.length} products? This action cannot be undone.`)) {
-                onBulkDelete(selectedRows);
-              }
-            }}
-          >
-            <Trash2 />
-          </DataTableActionBarAction>
-        </div>
-      </DataTableActionBar>
-      
-      <FloatingActionBar table={table}>
-        <div className="flex items-center gap-2">
-          <DataTableActionBarAction
-            size="sm"
-            tooltip="Activate selected"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              onBulkStatusChange(selectedRows, true);
-            }}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Activate
-          </DataTableActionBarAction>
-          <DataTableActionBarAction
-            size="sm"
-            tooltip="Deactivate selected"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              onBulkStatusChange(selectedRows, false);
-            }}
-          >
-            <XCircle className="h-4 w-4" />
-            Deactivate
-          </DataTableActionBarAction>
-          <DataTableActionBarAction
-            size="sm"
-            tooltip="Delete selected"
-            disabled={isPending}
-            onClick={() => {
-              const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original);
-              if (confirm(`Are you sure you want to delete ${selectedRows.length} products? This action cannot be undone.`)) {
-                onBulkDelete(selectedRows);
-              }
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </DataTableActionBarAction>
-        </div>
-      </FloatingActionBar>
+      <ProductTableActionBar table={table} categoryOptions={categoryOptions} />
+
     </div>
   );
 }
