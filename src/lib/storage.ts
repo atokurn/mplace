@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET_NAME) {
@@ -34,18 +34,8 @@ export async function generateUploadUrl(key: string, contentType: string) {
 }
 
 // Generate presigned URL for file download
-export async function generateDownloadUrl(key: string) {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: key,
-  });
-
-  const signedUrl = await getSignedUrl(r2Client, command, {
-    expiresIn: 3600, // 1 hour
-  });
-
-  return signedUrl;
-}
+// generateDownloadUrl removed: platform does not support digital product downloads
+/* digital product downloads disabled */
 
 // Get public URL for file (if bucket is configured for public access)
 export function getPublicUrl(key: string) {
@@ -61,6 +51,7 @@ export function generateFileKey(originalName: string, userId: string) {
 
 // Helper function to validate file type
 export function validateFileType(contentType: string, allowedTypes: string[]) {
+  // Keep for general file validations (e.g., images), but do not use for product downloads
   return allowedTypes.includes(contentType);
 }
 

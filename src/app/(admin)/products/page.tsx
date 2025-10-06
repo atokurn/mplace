@@ -18,7 +18,7 @@ interface ProductsPageProps {
 
 export const metadata: Metadata = {
   title: "Products",
-  description: "Manage your digital products and inventory",
+  description: "Manage your products and inventory",
 };
 
 export default async function ProductsPage(props: ProductsPageProps) {
@@ -31,7 +31,7 @@ export default async function ProductsPage(props: ProductsPageProps) {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Products</h1>
               <p className="text-muted-foreground">
-                Manage your digital products and inventory
+                Manage your products and inventory
               </p>
             </div>
             <Button asChild>

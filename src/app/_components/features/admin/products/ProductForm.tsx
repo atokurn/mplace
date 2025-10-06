@@ -44,9 +44,9 @@ const productFormSchema = z.object({
   tags: z.array(z.string()).default([]),
   imageUrl: z.string().min(1, "Product image is required"),
   isActive: z.boolean().default(true),
-  // Shipping & physical product fields (optional)
-  isPhysical: z.boolean().default(true),
-  requiresShipping: z.boolean().default(true),
+  // Shipping & physical product fields (enforced as true)
+  isPhysical: z.literal(true),
+  requiresShipping: z.literal(true),
   weightGrams: z.coerce.number().optional(),
   lengthCm: z.string().optional(),
   widthCm: z.string().optional(),
@@ -501,30 +501,8 @@ export function ProductForm({ product }: ProductFormProps) {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="isPhysical"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between">
-                        <FormLabel className="text-sm font-medium">Produk fisik</FormLabel>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="requiresShipping"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between">
-                        <FormLabel className="text-sm font-medium">Perlu pengiriman</FormLabel>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                  {/* isPhysical & requiresShipping enforced as true system-wide; toggles removed */}
+                  
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

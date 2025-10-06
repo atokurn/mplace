@@ -51,14 +51,14 @@ export default async function Home() {
     {
       id: 1,
       title: 'Vibrant background',
-      tags: ['Digital', 'Background', 'Colorful'],
+      tags: ['Background', 'Colorful', 'Physical'],
       price: 12,
       image: '/placeholder.svg'
     },
     {
       id: 2,
       title: 'Man with leaves',
-      tags: ['Portrait', 'Nature', 'Digital'],
+      tags: ['Portrait', 'Nature', 'Physical'],
       price: 38,
       image: '/placeholder.svg'
     },
@@ -102,8 +102,8 @@ export default async function Home() {
     },
     {
       id: 8,
-      title: 'Digital landscape',
-      tags: ['Landscape', 'Digital', 'Nature'],
+      title: 'Landscape poster',
+      tags: ['Landscape', 'Physical', 'Nature'],
       price: 65,
       image: '/placeholder.svg'
     }

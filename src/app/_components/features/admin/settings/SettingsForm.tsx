@@ -59,7 +59,7 @@ type SettingsFormValues = z.infer<typeof settingsFormSchema>;
 // Default values
 const defaultValues: Partial<SettingsFormValues> = {
   siteName: "FlatMarket",
-  siteDescription: "Digital marketplace for creative assets",
+  siteDescription: "Marketplace produk fisik berkualitas dari kreator berbakat",
   siteUrl: "https://flatmarket.com",
   contactEmail: "contact@flatmarket.com",
   currency: "USD",
@@ -70,8 +70,8 @@ const defaultValues: Partial<SettingsFormValues> = {
   enableSMSNotifications: false,
   maintenanceMode: false,
   analyticsCode: "",
-  metaTitle: "FlatMarket - Digital Marketplace",
-  metaDescription: "Discover and purchase high-quality digital assets",
+  metaTitle: "FlatMarket - Physical Product Marketplace",
+  metaDescription: "Temukan dan beli produk fisik berkualitas tinggi",
   socialTwitter: "@flatmarket",
   socialFacebook: "flatmarket",
   socialInstagram: "flatmarket",
@@ -145,10 +145,13 @@ export function SettingsForm() {
                     <FormLabel>Site Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Digital marketplace for creative assets"
+                        placeholder="Marketplace produk fisik berkualitas dari kreator berbakat"
                         {...field}
                       />
                     </FormControl>
+                    <FormDescription>
+                      A brief description of your site for users and search engines.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -364,7 +367,7 @@ export function SettingsForm() {
                   <FormItem>
                     <FormLabel>Meta Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="FlatMarket - Digital Marketplace" {...field} />
+                      <Input placeholder="FlatMarket - Physical Product Marketplace" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -379,10 +382,8 @@ export function SettingsForm() {
                     <FormLabel>Meta Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Discover and purchase high-quality digital assets"
-                        {...field}
-                      />
-                    </FormControl>
+                        placeholder="Temukan dan beli produk fisik berkualitas tinggi" {...field} />
+                      </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -24,8 +24,8 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: "DHXEL - Digital Asset Marketplace",
-  description: "Marketplace modern untuk aset digital seperti vektor, background desain, dan berbagai produk kreatif lainnya.",
+  title: "DHXEL - Marketplace Produk Fisik",
+  description: "Marketplace modern untuk produk fisik seperti dekorasi, background cetak, dan berbagai barang kreatif lainnya.",
 };
 
 export default function RootLayout({

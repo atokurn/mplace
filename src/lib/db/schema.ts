@@ -22,6 +22,7 @@ export const products = pgTable('products', {
   shortDescription: text('short_description'), // Brief product summary
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   originalPrice: decimal('original_price', { precision: 10, scale: 2 }), // For discount display
+  // commercialPrice removed
   categoryId: uuid('category_id').references(() => categories.id),
   category: text('category').notNull(), // Keep for backward compatibility
   tags: jsonb('tags').$type<string[]>().default([]),
@@ -48,6 +49,17 @@ export const products = pgTable('products', {
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
   keywords: jsonb('keywords').$type<string[]>().default([]),
+  
+  // Shipping & sales settings (added to reflect frontend form)
+  shippingMode: text('shipping_mode').notNull().default('default'), // 'default' | 'custom'
+  codEnabled: boolean('cod_enabled').default(false).notNull(),
+  shippingInsuranceEnabled: boolean('shipping_insurance_enabled').default(false).notNull(),
+  shippingInsuranceRequired: boolean('shipping_insurance_required').default(false).notNull(),
+  skuMappingEnabled: boolean('sku_mapping_enabled').default(false).notNull(),
+  
+  // Pre-order (product level)
+  preOrderEnabled: boolean('pre_order_enabled').default(false).notNull(),
+  preOrderLeadTimeDays: integer('pre_order_lead_time_days').default(0).notNull(),
   
   // Statistics and status
   viewCount: integer('view_count').default(0).notNull(),
@@ -202,6 +214,7 @@ export const insertProductSchema = createInsertSchema(products, {
   shortDescription: z.string().max(300, 'Short description must be less than 300 characters').optional(),
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
   originalPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid original price format').optional(),
+  // commercialPrice validation removed
   category: z.string().min(1, 'Category is required'),
   tags: z.array(z.string()).default([]),
   
@@ -211,8 +224,8 @@ export const insertProductSchema = createInsertSchema(products, {
   previewImages: z.array(z.string().url()).default([]),
 
   // Physical product validation
-  isPhysical: z.boolean().default(true),
-  requiresShipping: z.boolean().default(true),
+  isPhysical: z.literal(true),
+  requiresShipping: z.literal(true),
   weightGrams: z.number().int().positive('Weight must be a positive integer').optional(),
   lengthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid length').optional(),
   widthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid width').optional(),
@@ -226,6 +239,17 @@ export const insertProductSchema = createInsertSchema(products, {
   metaTitle: z.string().max(60, 'Meta title must be less than 60 characters').optional(),
   metaDescription: z.string().max(160, 'Meta description must be less than 160 characters').optional(),
   keywords: z.array(z.string()).default([]),
+
+  // Shipping & sales settings
+  shippingMode: z.enum(['default', 'custom']).default('default'),
+  codEnabled: z.boolean().default(false),
+  shippingInsuranceEnabled: z.boolean().default(false),
+  shippingInsuranceRequired: z.boolean().default(false),
+  skuMappingEnabled: z.boolean().default(false),
+
+  // Pre-order settings
+  preOrderEnabled: z.boolean().default(false),
+  preOrderLeadTimeDays: z.number().int().min(0).default(0),
   
   // Status fields
   isActive: z.boolean().default(true),
@@ -322,6 +346,16 @@ export const productVariants = pgTable('product_variants', {
   price: decimal('price', { precision: 10, scale: 2 }),
   compareAtPrice: decimal('compare_at_price', { precision: 10, scale: 2 }),
   attributes: jsonb('attributes').$type<Record<string, string>>(),
+  // Per-variant media and shipping
+  imageUrl: text('image_url'),
+  barcode: text('barcode'),
+  packageWeightGrams: integer('package_weight_grams'),
+  weightUnit: text('weight_unit').default('g').notNull(), // 'g' | 'kg'
+  packageLengthCm: decimal('package_length_cm', { precision: 10, scale: 2 }),
+  packageWidthCm: decimal('package_width_cm', { precision: 10, scale: 2 }),
+  packageHeightCm: decimal('package_height_cm', { precision: 10, scale: 2 }),
+  // Pre-order (variant level)
+  preOrderEnabled: boolean('pre_order_enabled').default(false).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -440,14 +474,33 @@ export const taxRates = pgTable('tax_rates', {
 });
 
 // Zod schemas for new tables
-export const insertProductVariantSchema = createInsertSchema(productVariants, {
-  sku: z.string().min(1),
-  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format').optional(),
-  compareAtPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format').optional(),
+export const productVariantOptions = pgTable('product_variant_options', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  name: text('name').notNull(), // e.g., "Color", "Size"
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
-export const selectProductVariantSchema = createSelectSchema(productVariants);
-export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
-export type SelectProductVariant = z.infer<typeof selectProductVariantSchema>;
+
+export const productVariantOptionValues = pgTable('product_variant_option_values', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  optionId: uuid('option_id').references(() => productVariantOptions.id).notNull(),
+  value: text('value').notNull(), // e.g., "Red", "XL"
+  imageUrl: text('image_url'), // optional swatch/image per value
+  colorCode: text('color_code'), // optional hex color for swatch
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const productVariantSelections = pgTable('product_variant_selections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  variantId: uuid('variant_id').references(() => productVariants.id).notNull(),
+  optionId: uuid('option_id').references(() => productVariantOptions.id).notNull(),
+  optionValueId: uuid('option_value_id').references(() => productVariantOptionValues.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
 
 export const insertInventorySchema = createInsertSchema(inventory, {
   stock: z.number().min(0),
@@ -553,3 +606,54 @@ export type ShipmentItem = typeof shipmentItems.$inferSelect;
 export type NewShipmentItem = typeof shipmentItems.$inferInsert;
 export type TaxRate = typeof taxRates.$inferSelect;
 export type NewTaxRate = typeof taxRates.$inferInsert;
+export const insertProductVariantSchema = createInsertSchema(productVariants, {
+  sku: z.string().min(1, 'SKU is required'),
+  title: z.string().optional(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format').optional(),
+  compareAtPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid compare-at price format').optional(),
+  attributes: z.record(z.string()).optional(),
+  imageUrl: z.string().url('Invalid image URL').optional(),
+  barcode: z.string().max(64).optional(),
+  packageWeightGrams: z.number().int().min(0, 'Weight must be a non-negative integer').optional(),
+  weightUnit: z.enum(['g', 'kg']).default('g'),
+  packageLengthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid package length').optional(),
+  packageWidthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid package width').optional(),
+  packageHeightCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid package height').optional(),
+  preOrderEnabled: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+export const selectProductVariantSchema = createSelectSchema(productVariants);
+export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
+export type SelectProductVariant = z.infer<typeof selectProductVariantSchema>;
+export const insertProductVariantOptionSchema = createInsertSchema(productVariantOptions, {
+  name: z.string().min(1, 'Option name is required'),
+  position: z.number().int().min(0).default(0),
+});
+export const selectProductVariantOptionSchema = createSelectSchema(productVariantOptions);
+export type InsertProductVariantOption = z.infer<typeof insertProductVariantOptionSchema>;
+export type SelectProductVariantOption = z.infer<typeof selectProductVariantOptionSchema>;
+export const insertProductVariantOptionValueSchema = createInsertSchema(productVariantOptionValues, {
+  value: z.string().min(1, 'Option value is required'),
+  imageUrl: z.string().url('Invalid image URL').optional(),
+  colorCode: z
+    .string()
+    .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Invalid hex color')
+    .optional(),
+  position: z.number().int().min(0).default(0),
+});
+export const selectProductVariantOptionValueSchema = createSelectSchema(productVariantOptionValues);
+export type InsertProductVariantOptionValue = z.infer<typeof insertProductVariantOptionValueSchema>;
+export type SelectProductVariantOptionValue = z.infer<typeof selectProductVariantOptionValueSchema>;
+export const insertProductVariantSelectionSchema = createInsertSchema(productVariantSelections, {
+  variantId: z.string().uuid('Invalid variant id'),
+  optionId: z.string().uuid('Invalid option id'),
+  optionValueId: z.string().uuid('Invalid option value id'),
+});export const selectProductVariantSelectionSchema = createSelectSchema(productVariantSelections);
+export type InsertProductVariantSelection = z.infer<typeof insertProductVariantSelectionSchema>;
+export type SelectProductVariantSelection = z.infer<typeof selectProductVariantSelectionSchema>;
+export type ProductVariantOption = typeof productVariantOptions.$inferSelect;
+export type NewProductVariantOption = typeof productVariantOptions.$inferInsert;
+export type ProductVariantOptionValue = typeof productVariantOptionValues.$inferSelect;
+export type NewProductVariantOptionValue = typeof productVariantOptionValues.$inferInsert;
+export type ProductVariantSelection = typeof productVariantSelections.$inferSelect;
+export type NewProductVariantSelection = typeof productVariantSelections.$inferInsert;

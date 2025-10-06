@@ -3,12 +3,12 @@ import Header from '@/components/layout/Header';
 import ContactClient from '@/app/_components/features/public/contact/ContactClient';
 
 export const metadata: Metadata = {
-  title: 'Contact Us - PIXEL Digital Marketplace',
-  description: 'Get in touch with PIXEL team. Send us a message, call us, or visit our office. We are here to help with all your digital asset needs.',
-  keywords: 'contact pixel, customer support, help, digital marketplace support, get in touch',
+  title: 'Contact Us - FlatMarket Physical Products',
+  description: 'Hubungi tim FlatMarket. Kirim pesan, telepon, atau kunjungi kantor kami. Kami siap membantu kebutuhan Anda terkait produk fisik.',
+  keywords: 'kontak flatmarket, dukungan pelanggan, bantuan, marketplace produk fisik, hubungi kami',
   openGraph: {
-    title: 'Contact Us - PIXEL Digital Marketplace',
-    description: 'Get in touch with PIXEL team for support and inquiries.',
+    title: 'Contact Us - FlatMarket Physical Products',
+    description: 'Hubungi tim FlatMarket untuk dukungan dan pertanyaan.',
     type: 'website'
   }
 };
@@ -30,14 +30,14 @@ async function getContactData() {
     console.error('Error fetching contact data:', error);
     // Fallback data
     return {
-      email: 'hello@pixel.com',
+      email: 'hello@flatmarket.com',
       phone: '+1 (555) 123-4567',
-      address: '123 Digital Street, Tech City, TC 12345',
+      address: '123 Market Avenue, Commerce City, CC 12345',
       socialMedia: {
-        twitter: 'https://twitter.com/pixel',
-        instagram: 'https://instagram.com/pixel',
-        linkedin: 'https://linkedin.com/company/pixel',
-        facebook: 'https://facebook.com/pixel'
+        twitter: 'https://twitter.com/flatmarket',
+        instagram: 'https://instagram.com/flatmarket',
+        linkedin: 'https://linkedin.com/company/flatmarket',
+        facebook: 'https://facebook.com/flatmarket'
       },
       businessHours: {
         monday: '9:00 AM - 6:00 PM',

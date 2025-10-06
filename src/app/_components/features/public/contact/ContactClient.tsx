@@ -381,21 +381,15 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
           >
             {[
               {
-                question: "How do I purchase digital assets?",
-                answer: "Simply browse our catalog, select the assets you want, and proceed to checkout. You&apos;ll receive download links immediately after payment."
+                question: "Bagaimana cara membeli produk fisik?",
+                answer:
+                  "Telusuri katalog kami, pilih produk yang diinginkan, dan lanjutkan ke checkout. Anda akan menerima konfirmasi pesanan dan informasi pengiriman setelah pembayaran berhasil.",
               },
               {
-                question: "What file formats do you offer?",
-                answer: "We offer various formats including PSD, AI, SVG, PNG, JPG, and more, depending on the asset type."
+                question: "Apakah produk dapat digunakan untuk keperluan komersial?",
+                answer:
+                  "Ya, Anda bebas menggunakan produk yang dibeli sesuai kebutuhan. Untuk detail garansi atau ketentuan penggunaan khusus, lihat halaman produk masing-masing.",
               },
-              {
-                question: "Can I use these assets commercially?",
-                answer: "Yes! All our assets come with commercial licenses. Check individual product pages for specific license details."
-              },
-              {
-                question: "Do you offer refunds?",
-                answer: "We offer refunds within 30 days of purchase if the asset doesn&apos;t meet your expectations or has technical issues.",
-              }
             ].map((faq, index) => (
               <motion.div
                 key={index}

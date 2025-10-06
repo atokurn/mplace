@@ -60,7 +60,7 @@ const team = [
     name: 'Alex Chen',
     role: 'Founder & CEO',
     image: '/placeholder.svg',
-    description: 'Visionary leader with 10+ years in digital design and marketplace development.'
+    description: 'Visionary leader with 10+ years in product design and marketplace development.'
   },
   {
     name: 'Sarah Johnson',
@@ -105,8 +105,8 @@ export default function AboutPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            We are a cutting-edge digital marketplace dedicated to empowering creators and designers worldwide. 
-            Our platform connects talented artists with businesses and individuals seeking premium digital assets.
+            Kami adalah marketplace modern untuk produk fisik yang memberdayakan kreator dan desainer di seluruh dunia.
+            Platform kami menghubungkan para pembuat (makers) dengan bisnis dan individu yang mencari produk fisik premium.
           </motion.p>
         </div>
       </section>
@@ -129,13 +129,13 @@ export default function AboutPage() {
                 </h2>
               </div>
               <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-                To democratize access to high-quality digital assets and create a thriving ecosystem 
-                where creativity meets commerce. We believe every designer deserves recognition and 
-                every project deserves exceptional visual elements.
+                Mendemokratisasi akses ke produk fisik berkualitas tinggi dan membangun ekosistem yang berkembang
+                di mana kreativitas bertemu dengan perdagangan. Kami percaya setiap desainer layak mendapat
+                pengakuan dan setiap proyek layak mendapat pengerjaan (craftsmanship) yang luar biasa.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Through our platform, we&apos;re building bridges between creative minds and those who 
-                need their expertise, fostering innovation and pushing the boundaries of digital design.
+                Melalui platform kami, kami membangun jembatan antara para pemikir kreatif dan mereka yang
+                membutuhkan keahlian mereka, mendorong inovasi dan mendorong batas-batas desain produk.
               </p>
             </motion.div>
             
@@ -192,9 +192,11 @@ export default function AboutPage() {
           >
             {stats.map((stat, index) => {
               const IconComponent = stat.icon;
+              const label = stat.label === 'Digital Assets' ? 'Physical Products' : stat.label;
+              const description = stat.description === 'High-quality designs and resources' ? 'High-quality physical goods from talented makers' : stat.description;
               return (
                 <motion.div
-                  key={stat.label}
+                  key={label}
                   className="bg-secondary/50 border border-border rounded-2xl p-6 text-center hover:bg-secondary/70 transition-all duration-300"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -205,8 +207,8 @@ export default function AboutPage() {
                     <IconComponent size={24} className="text-accent" />
                   </div>
                   <h3 className="orbitron-title text-2xl font-bold text-foreground mb-2">{stat.number}</h3>
-                  <p className="orbitron-font text-foreground font-semibold mb-1">{stat.label}</p>
-                  <p className="text-muted-foreground text-sm">{stat.description}</p>
+                  <p className="orbitron-font text-foreground font-semibold mb-1">{label}</p>
+                  <p className="text-muted-foreground text-sm">{description}</p>
                 </motion.div>
               );
             })}
@@ -322,11 +324,14 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 2.0 }}
           >
             <h2 className="orbitron-title text-3xl md:text-4xl font-bold text-foreground mb-6">
-              JOIN OUR COMMUNITY
+-              JOIN OUR COMMUNITY
++              JOIN OUR COMMUNITY
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-            Whether you&apos;re a creator looking to showcase your work or someone seeking premium digital assets, 
-            DAMA is the perfect place to connect, create, and grow.
+-              Whether you&apos;re a creator looking to showcase your work or someone seeking premium physical products,
+-              DAMA is the perfect place to connect, create, and grow.
++              Whether you&apos;re a creator looking to showcase your work or someone seeking premium physical products,
++              FlatMarket is the perfect place to connect, create, and grow.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button
