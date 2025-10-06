@@ -6,8 +6,21 @@ import { db } from "@/lib/db"
 import { orders, orderItems } from "@/lib/db/schema"
 import { takeFirstOrThrow } from "@/lib/db/utils"
 import { getErrorMessage } from "@/lib/handle-error"
-import { and, eq, inArray } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { z } from "zod"
+import { deleteMultiple, deleteSingle } from "@/lib/actions";
+
+type OrderStatus = "pending" | "processing" | "completed" | "cancelled" | "refunded"
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded"
+
+type OrderUpdateFields = Partial<{
+  status: OrderStatus
+  paymentStatus: PaymentStatus
+  paymentMethod: string
+  paymentId: string
+  notes: string
+  updatedAt: Date
+}>
 
 const updateOrdersSchema = z.object({
   ids: z.array(z.string()).min(1),
@@ -48,7 +61,7 @@ export async function updateOrders(rawInput: z.infer<typeof updateOrdersSchema>)
   try {
     const validatedInput = updateOrdersSchema.parse(rawInput)
 
-    const updateData: Record<string, any> = {
+    const updateData: OrderUpdateFields = {
       updatedAt: new Date(),
     }
 
@@ -80,34 +93,23 @@ export async function updateOrders(rawInput: z.infer<typeof updateOrdersSchema>)
 }
 
 export async function deleteOrders(rawInput: z.infer<typeof deleteOrdersSchema>) {
-  try {
-    const validatedInput = deleteOrdersSchema.parse(rawInput)
+  const validatedInput = deleteOrdersSchema.parse(rawInput)
 
-    // Delete order items first (foreign key constraint)
-    await db.delete(orderItems).where(inArray(orderItems.orderId, validatedInput.ids))
-    
-    // Then delete orders
-    await db.delete(orders).where(inArray(orders.id, validatedInput.ids))
-
-    revalidatePath("/orders")
-
-    return {
-      data: null,
-      error: null,
-    }
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    }
-  }
+  return deleteMultiple({
+    table: orders,
+    ids: validatedInput.ids,
+    revalidateTagName: "orders",
+    preDelete: async (ids) => {
+      await db.delete(orderItems).where(inArray(orderItems.orderId, ids));
+    },
+  });
 }
 
 export async function updateOrder(rawInput: z.infer<typeof updateOrderSchema>) {
   try {
     const validatedInput = updateOrderSchema.parse(rawInput)
 
-    const updateData: Record<string, any> = {
+    const updateData: OrderUpdateFields = {
       updatedAt: new Date(),
     }
 
@@ -204,19 +206,12 @@ export async function createOrder(rawInput: z.infer<typeof createOrderSchema>) {
 }
 
 export async function deleteOrder(id: string) {
-  try {
-    // Delete order items first
-    await db.delete(orderItems).where(eq(orderItems.orderId, id))
-    
-    // Then delete order
-    await db.delete(orders).where(eq(orders.id, id))
-
-    revalidatePath("/orders")
-    redirect("/orders")
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    }
-  }
+  return deleteSingle({
+    table: orders,
+    id,
+    revalidateTagName: "orders",
+    preDelete: async (id) => {
+      await db.delete(orderItems).where(eq(orderItems.orderId, id));
+    },
+  });
 }

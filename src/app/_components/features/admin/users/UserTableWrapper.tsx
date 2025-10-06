@@ -1,6 +1,6 @@
 import { getUsers } from "@/app/_lib/queries/users";
 import { usersSearchParamsCache } from "@/lib/search-params";
-import { UserTable } from "./UserTable";
+import { UserTable } from "./usertable";
 
 interface UserTableWrapperProps {
   searchParams: Record<string, string | string[] | undefined>;

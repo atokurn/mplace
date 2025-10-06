@@ -3,6 +3,7 @@
 import { db } from "@/lib/db"
 import { settings } from "@/lib/db/schema"
 import { and, count, desc, asc, eq, ilike, inArray, or } from "drizzle-orm"
+import type { AnyColumn } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { GetSettingsSchema } from "@/app/_lib/validations/settings"
 
@@ -34,9 +35,20 @@ export async function getSettings(input: GetSettingsSchema) {
           : or(...conditions)
         : undefined
 
+      // Map of sortable columns to avoid dynamic indexing on the Table object
+      const sortableColumns: Record<string, AnyColumn> = {
+        createdAt: settings.createdAt,
+        updatedAt: settings.updatedAt,
+        key: settings.key,
+        category: settings.category,
+        isPublic: settings.isPublic,
+      }
+
+      const sortCol = sortableColumns[sortField] ?? settings.createdAt
+
       const orderByClause = sortOrder === "desc" 
-        ? desc(settings[sortField as keyof typeof settings] || settings.createdAt)
-        : asc(settings[sortField as keyof typeof settings] || settings.createdAt)
+        ? desc(sortCol)
+        : asc(sortCol)
 
       const [data, totalResult] = await Promise.all([
         db
@@ -55,23 +67,21 @@ export async function getSettings(input: GetSettingsSchema) {
           .orderBy(orderByClause)
           .limit(per_page)
           .offset(offset),
-        
         db
           .select({ count: count() })
           .from(settings)
           .where(whereClause)
       ])
 
-      const total = totalResult[0]?.count ?? 0
+      const total = Number(totalResult[0]?.count ?? 0)
       const pageCount = Math.ceil(total / per_page)
 
       return {
         data,
         pageCount,
-        total,
       }
     },
-    [`settings-${JSON.stringify(input)}`],
+    ["settings", JSON.stringify(input)],
     {
       revalidate: 300,
       tags: ["settings"],
@@ -133,7 +143,7 @@ export async function getSettingByKey(key: string) {
   )()
 }
 
-export async function getSettingsByCategory(category: string) {
+export async function getSettingsByCategory(category: "general" | "payment" | "email" | "storage") {
   return await unstable_cache(
     async () => {
       return await db
@@ -148,7 +158,7 @@ export async function getSettingsByCategory(category: string) {
           updatedAt: settings.updatedAt,
         })
         .from(settings)
-        .where(eq(settings.category, category as any))
+        .where(eq(settings.category, category))
         .orderBy(asc(settings.key))
     },
     [`settings-category-${category}`],
@@ -176,31 +186,6 @@ export async function getPublicSettings() {
     {
       revalidate: 600, // 10 minutes for public settings
       tags: ["settings", "public-settings"],
-    }
-  )()
-}
-
-export async function getSettingsCategoryCounts() {
-  return await unstable_cache(
-    async () => {
-      const [general, payment, email, storage] = await Promise.all([
-        db.select({ count: count() }).from(settings).where(eq(settings.category, "general")),
-        db.select({ count: count() }).from(settings).where(eq(settings.category, "payment")),
-        db.select({ count: count() }).from(settings).where(eq(settings.category, "email")),
-        db.select({ count: count() }).from(settings).where(eq(settings.category, "storage")),
-      ])
-
-      return {
-        general: general[0]?.count ?? 0,
-        payment: payment[0]?.count ?? 0,
-        email: email[0]?.count ?? 0,
-        storage: storage[0]?.count ?? 0,
-      }
-    },
-    ["settings-category-counts"],
-    {
-      revalidate: 300,
-      tags: ["settings"],
     }
   )()
 }
@@ -249,7 +234,7 @@ export async function getSettingsObject(keys: string[]) {
         .where(inArray(settings.key, keys))
 
       return settingsData.reduce((acc, setting) => {
-        acc[setting.key] = setting.value
+        acc[String(setting.key)] = String(setting.value ?? "")
         return acc
       }, {} as Record<string, string>)
     },

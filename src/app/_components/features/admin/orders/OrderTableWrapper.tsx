@@ -16,7 +16,7 @@ interface OrderTableWrapperProps {
 }
 
 export async function OrderTableWrapper({ searchParams }: OrderTableWrapperProps) {
-  const search = ordersSearchParamsCache.parse(searchParams);
+  const search = ordersSearchParamsCache.parse(searchParams ?? {});
   const { data: orders, pageCount } = await getOrders(search);
 
   return <OrderTable orders={orders} pageCount={pageCount} />;

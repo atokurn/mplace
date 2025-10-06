@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -28,88 +28,100 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { updateUserSchema, type UpdateUserSchema } from "@/app/_lib/validations/users";
+import type { ZodTypeAny } from "zod";
 import { updateUser } from "@/app/_lib/actions/users";
-import { getUserById } from "@/app/_lib/queries/users";
+// Removed server-only import to fix build error
+// import { getUserById } from "@/app/_lib/queries/users";
 
-interface EditUserPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function EditUserPage({ params }: EditUserPageProps) {
+export default function EditUserPage() {
   const router = useRouter();
+  const { id } = useParams<{ id: string }>();
   const [isLoading, setIsLoading] = React.useState(false);
   const [isLoadingData, setIsLoadingData] = React.useState(true);
-  const [user, setUser] = React.useState<any>(null);
-
-  const form = useForm<UpdateUserSchema>({
-    resolver: zodResolver(updateUserSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      role: "user",
-      avatar: "",
-    },
-  });
-
-  // Load user data
-  React.useEffect(() => {
-    async function loadUser() {
-      try {
-        const result = await getUserById(params.id);
-        if (result) {
-          setUser(result);
-          form.reset({
-            name: result.name || "",
-            email: result.email || "",
-            role: result.role || "user",
-            avatar: result.avatar || "",
-            // Don't pre-fill password for security
-            password: "",
-          });
-        } else {
-          toast.error("User not found");
-          router.push("/admin/users");
-        }
-      } catch (error) {
-        toast.error("Failed to load user");
-        console.error("Error loading user:", error);
-        router.push("/admin/users");
-      } finally {
-        setIsLoadingData(false);
-      }
-    }
-
-    loadUser();
-  }, [params.id, form, router]);
-
+  // removed unused local 'user' state
+ 
+   const form = useForm<UpdateUserSchema>({
+     resolver: zodResolver(updateUserSchema as unknown as ZodTypeAny),
+     defaultValues: {
+       name: "",
+       email: "",
+       password: "",
+       role: "user",
+       avatar: "",
+     },
+   });
+ 
+   // Load user data via API (client-safe)
+   React.useEffect(() => {
+     async function loadUser() {
+       if (!id) {
+         toast.error("Invalid user id");
+         router.push("/admin/users");
+         return;
+       }
+       try {
+         const res = await fetch(`/api/users/${id}`, { cache: "no-store" });
+         if (!res.ok) {
+           const err = await res.json().catch(() => ({}));
+           throw new Error(err?.error || `Failed to fetch user (${res.status})`);
+         }
+         const result = await res.json();
+         const data = result?.data ?? result; // support either {data} or raw
+         if (data) {
+           form.reset({
+             name: data.name || "",
+             email: data.email || "",
+             role: data.role || "user",
+             avatar: data.avatar || "",
+             // Don't pre-fill password for security
+             password: "",
+           });
+         } else {
+           throw new Error("User not found");
+         }
+       } catch (error) {
+         toast.error("Failed to load user");
+         console.error("Error loading user:", error);
+         router.push("/admin/users");
+       } finally {
+         setIsLoadingData(false);
+       }
+     }
+ 
+     loadUser();
+   }, [id, form, router]);
+ 
   async function onSubmit(data: UpdateUserSchema) {
     setIsLoading(true);
     try {
+      if (!id) {
+        toast.error("Invalid user id");
+        return;
+      }
       // Remove empty password field if not provided
-      const updateData = { ...data };
-      if (!updateData.password || updateData.password.trim() === "") {
-        delete updateData.password;
+      const updateData: UpdateUserSchema & { id: string } = { ...data, id };
+      if (!data.password || data.password.trim() === "") {
+        // omit password if blank
+        delete (updateData as Partial<UpdateUserSchema>).password;
       }
 
-      const result = await updateUser(params.id, updateData);
-      
-      if (result.success) {
-        toast.success("User updated successfully");
-        router.push("/admin/users");
-        router.refresh();
-      } else {
-        toast.error(result.message || "Failed to update user");
-      }
-    } catch (error) {
-      toast.error("An unexpected error occurred");
-      console.error("Error updating user:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+      // Call server action with correct signature
+      const result = await updateUser(updateData);
+ 
+       if (!result.error) {
+         toast.success("User updated successfully");
+         router.push("/admin/users");
+         router.refresh();
+       } else {
+         toast.error(result.error || "Failed to update user");
+       }
+     } catch (error) {
+       toast.error("An unexpected error occurred");
+       console.error("Error updating user:", error);
+     } finally {
+       setIsLoading(false);
+     }
+   }
 
   if (isLoadingData) {
     return (
@@ -137,7 +149,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                 <Skeleton className="h-10 w-full" />
               </div>
               <div className="space-y-2">
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-10 w-32" />
               </div>
               <div className="flex gap-4">
@@ -158,7 +170,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Edit User</h1>
             <p className="text-muted-foreground">
-              Update user account details
+              Update the user details and permissions
             </p>
           </div>
           <div className="flex gap-4">
@@ -192,12 +204,12 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                      <FormLabel>Name *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter full name" {...field} />
+                        <Input placeholder="Enter user name" {...field} />
                       </FormControl>
                       <FormDescription>
-                        The user's full name
+                        The full name of the user
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -209,16 +221,12 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email Address</FormLabel>
+                      <FormLabel>Email *</FormLabel>
                       <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="user@example.com"
-                          {...field}
-                        />
+                        <Input type="email" placeholder="Enter user email" {...field} />
                       </FormControl>
                       <FormDescription>
-                        A valid email address for the user
+                        The user&apos;s email address
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -232,14 +240,10 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Leave empty to keep current password"
-                          {...field}
-                        />
+                        <Input type="password" placeholder="Enter new password (optional)" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Leave empty to keep the current password. Must be at least 8 characters if provided.
+                        Leave blank to keep the current password
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -252,7 +256,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a role" />
@@ -264,7 +268,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        The user's role determines their permissions
+                        Assign the user&apos;s role
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -278,11 +282,7 @@ export default function EditUserPage({ params }: EditUserPageProps) {
                     <FormItem>
                       <FormLabel>Avatar URL</FormLabel>
                       <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://example.com/avatar.jpg"
-                          {...field}
-                        />
+                        <Input type="url" placeholder="https://example.com/avatar.jpg" {...field} />
                       </FormControl>
                       <FormDescription>
                         Optional avatar image URL for the user

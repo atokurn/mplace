@@ -1,4 +1,4 @@
-import { NextAuthOptions } from 'next-auth';
+import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { db } from './db';
@@ -57,33 +57,37 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-        token.id = user.id;
+      if (user && 'id' in user) {
+        token.id = (user as { id: string }).id;
+      }
+      if (user && 'role' in user) {
+        token.role = (user as { role?: string | null }).role ?? null;
       }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+      const mutable = session.user as import('next-auth').DefaultSession['user'] & {
+        id?: string;
+        role?: string | null;
+      };
+      if (typeof token.id === 'string') {
+        mutable.id = token.id;
       }
+      mutable.role = typeof token.role === 'string' ? token.role : null;
       return session;
     },
   },
   pages: {
     signIn: '/login',
-    signUp: '/signup',
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
-// Helper function to check if user is admin
-export const isAdmin = (user: any) => {
-  return user?.role === 'admin';
+export type SessionUser = { id?: string; role?: string | null } | undefined | null;
+export const isAdmin = (user: SessionUser): boolean => {
+  return (user?.role ?? null) === 'admin';
 };
 
-// Helper function to hash password
 export const hashPassword = async (password: string) => {
   return await bcrypt.hash(password, 12);
 };

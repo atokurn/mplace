@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Sun, Moon, Menu, X, Globe, ShoppingCart, LogOut, Settings } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -20,9 +20,15 @@ const Header = () => {
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   
+  // Avoid hydration mismatch by rendering theme-dependent icons only after mount
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
   // Simulasi status login - nanti bisa diganti dengan context auth yang sebenarnya
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState({ name: 'John Doe', email: 'john@example.com' });
+  const [user] = useState({ name: 'John Doe', email: 'john@example.com' });
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -145,7 +151,9 @@ const Header = () => {
               whileTap={{ scale: 0.95 }}
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              {mounted ? (theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />) : (
+                <span className="inline-block" style={{ width: 20, height: 20 }} />
+              )}
             </motion.button>
             
             {/* Cart Icon */}
@@ -160,61 +168,68 @@ const Header = () => {
                 0
               </span>
             </motion.div>
-            
+
             {/* User Profile */}
-            <div className="relative">
-              <motion.button
-                onClick={onUserProfileClick}
-                className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                aria-label="User profile"
-              >
-                <User size={20} />
-              </motion.button>
-              
-              {/* User Dropdown */}
-              <AnimatePresence>
-                {isLoggedIn && userMenuOpen && (
-                  <motion.div
-                    className="absolute right-0 mt-2 w-56 bg-card-bg border border-border rounded-lg shadow-lg overflow-hidden z-50"
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="px-4 py-3 border-b border-border">
-                      <p className="text-sm font-medium text-foreground">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          router.push('/profile');
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
-                      >
-                        <Settings size={16} className="mr-3" />
-                        {language === 'en' ? 'Settings' : 'Pengaturan'}
-                      </button>
-                      <button
-                        onClick={onLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
-                      >
-                        <LogOut size={16} className="mr-3" />
-                        {language === 'en' ? 'Logout' : 'Keluar'}
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <motion.button
+              onClick={onUserProfileClick}
+              className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="User profile"
+            >
+              <User size={20} />
+            </motion.button>
+
+            {/* User Menu */}
+            <AnimatePresence>
+              {userMenuOpen && (
+                <motion.div
+                  className="absolute right-4 top-16 w-56 bg-card-bg border border-border rounded-lg shadow-lg overflow-hidden z-50"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="p-4 border-b border-border">
+                    <p className="text-sm font-medium text-foreground">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
+                    >
+                      <Settings size={16} className="mr-3" />
+                      {language === 'en' ? 'Settings' : 'Pengaturan'}
+                    </button>
+                    <button
+                      onClick={onLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-secondary transition-colors flex items-center"
+                    >
+                      <LogOut size={16} className="mr-3" />
+                      {language === 'en' ? 'Logout' : 'Keluar'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           
           {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center space-x-3">
-            {/* Theme Toggle (Mobile) */}
+          <div className="md:hidden flex items-center space-x-3">
+            <motion.button
+              onClick={toggleMobileMenu}
+              className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </motion.button>
+
             <motion.button
               onClick={toggleTheme}
               className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
@@ -222,131 +237,38 @@ const Header = () => {
               whileTap={{ scale: 0.95 }}
               aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </motion.button>
-            
-            {/* Menu Toggle */}
-            <motion.button
-              onClick={toggleMobileMenu}
-              className="p-2 rounded-full bg-secondary text-foreground hover:bg-accent hover:text-background transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              aria-label="Toggle mobile menu"
-            >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mounted ? (theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />) : (
+                <span className="inline-block" style={{ width: 20, height: 20 }} />
+              )}
             </motion.button>
           </div>
         </div>
-      </div>
-      
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            className="md:hidden bg-background border-b border-border"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-              <div className="px-4 py-3 space-y-1">
+
+        {/* Mobile Navigation */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.nav
+              className="md:hidden py-4 space-y-2"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
               {navItems.map((item) => (
                 <Link key={item.key} href={item.href}>
                   <motion.div
-                    className="block py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors cursor-pointer"
+                    className="block px-4 py-2 rounded-md text-foreground hover:bg-secondary transition-colors"
+                    whileHover={{ x: 4 }}
                     onClick={() => setMobileMenuOpen(false)}
-                    whileHover={{ x: 5 }}
                   >
                     {item.label}
                   </motion.div>
                 </Link>
               ))}
-            
-              
-              {/* Language Selector (Mobile) */}
-              <div className="py-2 px-3">
-                <div className="font-medium text-foreground mb-2">{language === 'en' ? 'Language' : 'Bahasa'}</div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setLanguage('en')}
-                    className={`px-3 py-1 rounded-md ${language === 'en' ? 'bg-accent text-background' : 'bg-secondary text-foreground'}`}
-                  >
-                    EN
-                  </button>
-                  <button
-                    onClick={() => setLanguage('id')}
-                    className={`px-3 py-1 rounded-md ${language === 'id' ? 'bg-accent text-background' : 'bg-secondary text-foreground'}`}
-                  >
-                    ID
-                  </button>
-                </div>
-              </div>
-              
-              {/* Cart (Mobile) */}
-              <motion.a
-                href="#"
-                className="flex items-center py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors"
-                whileHover={{ x: 5 }}
-              >
-                <ShoppingCart size={18} className="mr-3" />
-                {t('cart')}
-                <span className="ml-auto bg-accent text-background text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  0
-                </span>
-              </motion.a>
-              
-              {/* User Profile (Mobile) */}
-              {isLoggedIn ? (
-                <div className="py-2 px-3">
-                  <div className="flex items-center mb-2">
-                    <User size={18} className="mr-2 text-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="ml-6 space-y-1">
-                    <motion.button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        router.push('/profile');
-                      }}
-                      className="flex items-center w-full text-left py-1 text-sm text-foreground hover:text-accent transition-colors"
-                      whileHover={{ x: 5 }}
-                    >
-                      <Settings size={14} className="mr-2" />
-                      {language === 'en' ? 'Settings' : 'Pengaturan'}
-                    </motion.button>
-                    <motion.button
-                      onClick={() => {
-                        onLogout();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="flex items-center w-full text-left py-1 text-sm text-foreground hover:text-accent transition-colors"
-                      whileHover={{ x: 5 }}
-                    >
-                      <LogOut size={14} className="mr-2" />
-                      {language === 'en' ? 'Logout' : 'Keluar'}
-                    </motion.button>
-                  </div>
-                </div>
-              ) : (
-                <motion.button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/login');
-                  }}
-                  className="flex items-center w-full text-left py-2 px-3 text-foreground hover:text-accent rounded-md transition-colors"
-                  whileHover={{ x: 5 }}
-                >
-                  <User size={18} className="mr-2" />
-                  <span>{language === 'en' ? 'Login' : 'Masuk'}</span>
-                </motion.button>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.nav>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.header>
   );
 };

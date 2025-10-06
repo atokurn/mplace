@@ -6,9 +6,21 @@ import { db } from "@/lib/db"
 import { users } from "@/lib/db/schema"
 import { takeFirstOrThrow } from "@/lib/db/utils"
 import { getErrorMessage } from "@/lib/handle-error"
-import { and, eq, inArray } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { z } from "zod"
 import bcrypt from "bcryptjs"
+import { deleteMultiple, deleteSingle } from "@/lib/actions";
+
+type UserRole = "user" | "admin"
+
+type UserUpdateFields = Partial<{
+  name: string
+  email: string
+  password: string
+  role: UserRole
+  avatar: string | null
+  updatedAt: Date
+}>
 
 const updateUsersSchema = z.object({
   ids: z.array(z.string()).min(1),
@@ -40,7 +52,7 @@ export async function updateUsers(rawInput: z.infer<typeof updateUsersSchema>) {
   try {
     const validatedInput = updateUsersSchema.parse(rawInput)
 
-    const updateData: Record<string, any> = {
+    const updateData: Partial<{ role: UserRole; isActive: boolean; updatedAt: Date }> = {
       updatedAt: new Date(),
     }
 
@@ -68,23 +80,13 @@ export async function updateUsers(rawInput: z.infer<typeof updateUsersSchema>) {
 }
 
 export async function deleteUsers(rawInput: z.infer<typeof deleteUsersSchema>) {
-  try {
-    const validatedInput = deleteUsersSchema.parse(rawInput)
+  const validatedInput = deleteUsersSchema.parse(rawInput);
 
-    await db.delete(users).where(inArray(users.id, validatedInput.ids))
-
-    revalidatePath("/users")
-
-    return {
-      data: null,
-      error: null,
-    }
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    }
-  }
+  return deleteMultiple({
+    table: users,
+    ids: validatedInput.ids,
+    revalidateTagName: "users",
+  });
 }
 
 export async function createUser(rawInput: z.infer<typeof createUserSchema>) {
@@ -123,7 +125,7 @@ export async function updateUser(rawInput: z.infer<typeof updateUserSchema>) {
   try {
     const validatedInput = updateUserSchema.parse(rawInput)
 
-    const updateData: Record<string, any> = {
+    const updateData: UserUpdateFields = {
       updatedAt: new Date(),
     }
 
@@ -170,15 +172,9 @@ export async function updateUser(rawInput: z.infer<typeof updateUserSchema>) {
 }
 
 export async function deleteUser(id: string) {
-  try {
-    await db.delete(users).where(eq(users.id, id))
-
-    revalidatePath("/users")
-    redirect("/users")
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    }
-  }
+  return deleteSingle({
+    table: users,
+    id,
+    revalidateTagName: "users",
+  });
 }

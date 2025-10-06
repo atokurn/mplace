@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createUserSchema, type CreateUserSchema } from "@/app/_lib/validations/users";
+import type { ZodTypeAny } from "zod";
 import { createUser } from "@/app/_lib/actions/users";
 
 export default function AddUserPage() {
@@ -34,13 +35,13 @@ export default function AddUserPage() {
   const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<CreateUserSchema>({
-    resolver: zodResolver(createUserSchema),
+    resolver: zodResolver(createUserSchema as unknown as ZodTypeAny),
     defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      role: "user",
-    },
+       name: "",
+       email: "",
+       password: "",
+       role: "user",
+     },
   });
 
   async function onSubmit(data: CreateUserSchema) {
@@ -50,7 +51,7 @@ export default function AddUserPage() {
       
       if (result.data && !result.error) {
         toast.success("User created successfully");
-        router.push("/admin/users");
+        router.push("/users");
         router.refresh();
       } else {
         toast.error(result.error || "Failed to create user");
@@ -109,7 +110,7 @@ export default function AddUserPage() {
                         <Input placeholder="Enter full name" {...field} />
                       </FormControl>
                       <FormDescription>
-                        The user's full name
+                        The user&apos;s full name
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -176,7 +177,7 @@ export default function AddUserPage() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        The user's role determines their permissions
+                        The user&apos;s role determines their permissions
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

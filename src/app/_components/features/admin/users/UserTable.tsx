@@ -9,7 +9,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTable } from "@/components/data-table/data-table";
@@ -18,32 +17,25 @@ import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDataTable } from "@/hooks/use-data-table";
 import { type ColumnDef } from "@tanstack/react-table";
-import { Ban, Edit, Eye, MoreHorizontal, UserCheck } from "lucide-react";
-
-// User interface based on database schema
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "user";
-  avatar: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { Edit, Eye, MoreHorizontal } from "lucide-react";
+import { type PublicUser } from "./usertable-columns";
 
 interface UserTableProps {
-  users: User[];
+  users: PublicUser[];
   pageCount: number;
 }
 
-const columns: ColumnDef<User>[] = [
+const columns: ColumnDef<PublicUser>[] = [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+              ? "indeterminate"
+              : false
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
@@ -65,7 +57,7 @@ const columns: ColumnDef<User>[] = [
       <DataTableColumnHeader column={column} title="User" />
     ),
     cell: ({ row }) => {
-      const user = row.original;
+      const user = row.original as PublicUser;
       return (
         <div className="flex items-center space-x-3">
           <Avatar className="h-8 w-8">
@@ -107,7 +99,7 @@ const columns: ColumnDef<User>[] = [
       <DataTableColumnHeader column={column} title="Joined" />
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("createdAt"));
+      const date = new Date(row.getValue("createdAt") as Date | string);
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
@@ -117,15 +109,13 @@ const columns: ColumnDef<User>[] = [
       <DataTableColumnHeader column={column} title="Last Updated" />
     ),
     cell: ({ row }) => {
-      const date = new Date(row.getValue("updatedAt"));
+      const date = new Date(row.getValue("updatedAt") as Date | string);
       return <div>{date.toLocaleDateString()}</div>;
     },
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const user = row.original;
-
+    cell: () => {
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -152,27 +142,10 @@ const columns: ColumnDef<User>[] = [
 ];
 
 export function UserTable({ users, pageCount }: UserTableProps) {
-  const { table } = useDataTable({
+  const { table } = useDataTable<PublicUser>({
     data: users,
     columns,
     pageCount,
-    filterFields: [
-      {
-        label: "Name",
-        value: "name",
-        placeholder: "Filter names...",
-      },
-      {
-        label: "Email",
-        value: "email",
-        placeholder: "Filter emails...",
-      },
-      {
-        label: "Role",
-        value: "role",
-        placeholder: "Filter roles...",
-      },
-    ],
   });
 
   return (

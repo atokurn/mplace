@@ -8,25 +8,25 @@ import ProductCard from '@/app/_components/shared/layouts/products/ProductCard';
 const featuredProducts = [
   {
     title: 'Vibrant background',
-    price: '$12',
+    price: 12,
     image: '/placeholder.svg',
     tags: ['Background', 'Abstract']
   },
   {
     title: 'Man with leaves',
-    price: '$8',
+    price: 8,
     image: '/placeholder.svg',
     tags: ['Vector', 'Illustration']
   },
   {
     title: '3D spheres',
-    price: '$15',
+    price: 15,
     image: '/placeholder.svg',
     tags: ['3D', 'Modern']
   },
   {
     title: 'Grunge texture',
-    price: '$5',
+    price: 5,
     image: '/placeholder.svg',
     tags: ['Texture', 'Grunge']
   }
@@ -35,25 +35,25 @@ const featuredProducts = [
 const products = [
   {
     title: 'Vibrant background',
-    price: '$12',
+    price: 12,
     image: '/placeholder.svg',
     tags: ['Background', 'Abstract']
   },
   {
     title: 'Man with leaves',
-    price: '$8',
+    price: 8,
     image: '/placeholder.svg',
     tags: ['Vector', 'Illustration']
   },
   {
     title: 'Plant icon',
-    price: '$3',
+    price: 3,
     image: '/placeholder.svg',
     tags: ['Icon', 'Nature']
   },
   {
     title: 'Dark texture',
-    price: '$7',
+    price: 7,
     image: '/placeholder.svg',
     tags: ['Texture', 'Dark']
   }

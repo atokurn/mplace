@@ -5,9 +5,9 @@ import { db } from "@/lib/db"
 import { orders, orderItems, products, users, type SelectOrder } from "@/lib/db/schema"
 import { buildFilterWhere } from "@/lib/filter-columns"
 import { ordersSearchParamsCache } from "@/lib/search-params"
-import { and, asc, count, desc, eq, ilike, or, sql, sum } from "drizzle-orm"
+import { asc, count, desc, eq, sum } from "drizzle-orm"
 
-export async function getOrders(input: ReturnType<typeof ordersSearchParamsCache.parse>) {
+export async function getOrders(input: Awaited<ReturnType<typeof ordersSearchParamsCache.parse>>) {
   return await unstable_cache(
     async () => {
       const { page, per_page, sort, orderNumber, status, paymentStatus, operator } = input
@@ -30,24 +30,13 @@ export async function getOrders(input: ReturnType<typeof ordersSearchParamsCache
               : desc(orders[column])
             : desc(orders.createdAt)
 
-        const expressions = [
-          orderNumber
-            ? ilike(orders.orderNumber, `%${orderNumber}%`)
-            : undefined,
-          status
-            ? eq(orders.status, status)
-            : undefined,
-          paymentStatus
-            ? eq(orders.paymentStatus, paymentStatus)
-            : undefined,
-        ].filter(Boolean)
+        const filters = [
+          orderNumber ? { column: orders.orderNumber, value: orderNumber, operator: 'ilike' as const } : undefined,
+          status ? { column: orders.status, value: status, operator: 'eq' as const } : undefined,
+          paymentStatus ? { column: orders.paymentStatus, value: paymentStatus, operator: 'eq' as const } : undefined,
+        ].filter(Boolean) as Parameters<typeof buildFilterWhere>[0]
 
-        const where = buildFilterWhere({
-          column: "orderNumber",
-          value: expressions,
-          operator,
-          isSelectable: false,
-        })
+        const where = buildFilterWhere(filters, operator)
 
         // Transaction is used to ensure both queries are executed in a single transaction
         const { data, total } = await db.transaction(async (tx) => {
@@ -93,7 +82,7 @@ export async function getOrders(input: ReturnType<typeof ordersSearchParamsCache
 
         const pageCount = Math.ceil(total / per_page)
         return { data, pageCount }
-      } catch (err) {
+      } catch {
         return { data: [], pageCount: 0 }
       }
     },
@@ -153,7 +142,7 @@ export async function getOrderById(id: string) {
           ...order[0],
           items,
         }
-      } catch (err) {
+      } catch {
         return null
       }
     },
@@ -184,7 +173,7 @@ export async function getOrderStatusCounts() {
           cancelled: statusCounts.find((item) => item.status === "cancelled")?.count ?? 0,
           refunded: statusCounts.find((item) => item.status === "refunded")?.count ?? 0,
         }
-      } catch (err) {
+      } catch {
         return {
           pending: 0,
           processing: 0,
@@ -224,7 +213,7 @@ export async function getOrdersForExport() {
           .orderBy(desc(orders.createdAt))
 
         return data
-      } catch (err) {
+      } catch {
         return []
       }
     },
@@ -271,7 +260,7 @@ export async function getOrdersAnalytics() {
           completedOrders,
           pendingOrders,
         }
-      } catch (err) {
+      } catch {
         return {
           totalOrders: 0,
           totalRevenue: 0,

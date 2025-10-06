@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,6 +45,8 @@ export default function RootLayout({
               <NuqsAdapter>
                 {children}
               </NuqsAdapter>
+              {/* Global Sonner toaster at bottom-right */}
+              <Toaster position="bottom-right" />
             </LanguageProvider>
           </ThemeProvider>
         </AuthProvider>

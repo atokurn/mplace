@@ -134,7 +134,7 @@ export default function AboutPage() {
                 every project deserves exceptional visual elements.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Through our platform, we're building bridges between creative minds and those who 
+                Through our platform, we&apos;re building bridges between creative minds and those who 
                 need their expertise, fostering innovation and pushing the boundaries of digital design.
               </p>
             </motion.div>
@@ -180,7 +180,7 @@ export default function AboutPage() {
               BY THE NUMBERS
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our platform's growth reflects the trust and satisfaction of our global community
+              Our platform&apos;s growth reflects the trust and satisfaction of our global community
             </p>
           </motion.div>
 
@@ -227,7 +227,7 @@ export default function AboutPage() {
               OUR VALUES
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              The principles that guide everything we do and shape our platform's future
+              The principles that guide everything we do and shape our platform&apos;s future
             </p>
           </motion.div>
 
@@ -325,8 +325,8 @@ export default function AboutPage() {
               JOIN OUR COMMUNITY
             </h2>
             <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-              Whether you're a creator looking to showcase your work or someone seeking premium digital assets, 
-              DAMA is the perfect place to connect, create, and grow.
+            Whether you&apos;re a creator looking to showcase your work or someone seeking premium digital assets, 
+            DAMA is the perfect place to connect, create, and grow.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <motion.button

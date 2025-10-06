@@ -2,19 +2,10 @@
 
 import * as React from "react";
 import type { Table } from "@tanstack/react-table";
-import { X, Download, Filter, Settings2 } from "lucide-react";
+import { X, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTableDateFilter } from "@/components/data-table/data-table-date-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
@@ -41,12 +32,10 @@ export function DataTableAdvancedToolbar<TData>({
 
   // Handle export functionality
   const handleExport = React.useCallback(() => {
-    const data = table.getFilteredRowModel().rows.map(row => row.original);
-    const csv = convertToCSV(data);
-    downloadCSV(csv, 'products-export.csv');
+    const data = table.getFilteredRowModel().rows.map((row) => row.original);
+    const csv = convertToCSV(data as Record<string, unknown>[]);
+    downloadCSV(csv, "products-export.csv");
   }, [table]);
-
-
 
   return (
     <div className={cn("flex flex-col gap-4", className)} {...props}>
@@ -67,24 +56,26 @@ export function DataTableAdvancedToolbar<TData>({
           {filterFields.map((field) => {
             const column = table.getColumn(field.value as string);
             if (!column) return null;
+            const meta = column.columnDef.meta;
+            const variant = meta?.variant;
             
             // Show faceted filter for fields with options (multiSelect, select)
-            if (field.variant === 'multiSelect' || field.variant === 'select') {
-              if (!field.options) return null;
+            if (variant === "multiSelect" || variant === "select") {
+              if (!meta?.options) return null;
               
               return (
                 <DataTableFacetedFilter
                   key={field.value as string}
                   column={column}
                   title={field.label}
-                  options={field.options}
-                  multiple={field.variant === 'multiSelect'}
+                  options={meta.options}
+                  multiple={variant === "multiSelect"}
                 />
               );
             }
             
             // Show date filter for dateRange variant
-            if (field.variant === 'dateRange') {
+            if (variant === "dateRange") {
               return (
                 <DataTableDateFilter
                   key={field.value as string}
@@ -138,35 +129,36 @@ export function DataTableAdvancedToolbar<TData>({
 }
 
 // Utility functions for CSV export
-function convertToCSV(data: any[]): string {
-  if (!data.length || !data[0]) return '';
+function convertToCSV(data: Record<string, unknown>[]): string {
+  if (!data.length || !data[0]) return "";
   
   const headers = Object.keys(data[0]);
-  const csvHeaders = headers.join(',');
+  const csvHeaders = headers.join(",");
   
-  const csvRows = data.map(row => 
-    headers.map(header => {
-      const value = row[header];
-      // Handle values that might contain commas or quotes
-      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-        return `"${value.replace(/"/g, '""')}"`;
-      }
-      return value;
-    }).join(',')
+  const csvRows = data.map((row) =>
+    headers
+      .map((header) => {
+        const value = row[header];
+        if (typeof value === "string" && (value.includes(",") || value.includes("\""))) {
+          return `"${value.replace(/\"/g, '""')}"`;
+        }
+        return String(value ?? "");
+      })
+      .join(","),
   );
   
-  return [csvHeaders, ...csvRows].join('\n');
+  return [csvHeaders, ...csvRows].join("\n");
 }
 
 function downloadCSV(csv: string, filename: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
   
   if (link.download !== undefined) {
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

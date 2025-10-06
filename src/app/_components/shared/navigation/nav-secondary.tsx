@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { type LucideIcon } from "lucide-react"
 
 import {
@@ -22,13 +23,20 @@ export function NavSecondary({
     icon: LucideIcon
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  const pathname = usePathname()
+
+  const isActive = (url: string) => {
+    if (!url) return false
+    return pathname === url || pathname.startsWith(url + "/")
+  }
+
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild size="sm">
+              <SidebarMenuButton asChild size="sm" isActive={isActive(item.url)}>
                 <Link href={item.url}>
                   <item.icon />
                   <span>{item.title}</span>

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ProductCard from '@/app/_components/shared/layouts/products/ProductCard';
 import Header from '@/components/layout/Header';
-import Sheet from '@/components/ui/Sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useState } from 'react';
 import { Filter, SortAsc, SortDesc, Search } from 'lucide-react';
 
@@ -271,96 +271,96 @@ const CatalogPage = () => {
       </section>
 
       {/* Filter Sheet */}
-      <Sheet
-        isOpen={isFilterSheetOpen}
-        onClose={() => setIsFilterSheetOpen(false)}
-        title="Filter Products"
-        side="right"
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              CATEGORY
-            </label>
-            <div className="space-y-2">
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => {
-                    setFilterTag(tag);
-                    setIsFilterSheetOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    filterTag === tag
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
-                >
-                  {tag.toUpperCase()}
-                </button>
-              ))}
+      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Filter Products</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
+                CATEGORY
+              </label>
+              <div className="space-y-2">
+                {allTags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      setFilterTag(tag);
+                      setIsFilterSheetOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
+                      filterTag === tag
+                        ? 'bg-accent text-background font-medium border-accent'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                    }`}
+                  >
+                    {tag.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </SheetContent>
       </Sheet>
 
       {/* Sort Sheet */}
-      <Sheet
-        isOpen={isSortSheetOpen}
-        onClose={() => setIsSortSheetOpen(false)}
-        title="Sort Products"
-        side="right"
-      >
-        <div className="space-y-6">
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              SORT BY
-            </label>
-            <div className="space-y-2">
-              {[{ value: 'name', label: 'NAME' }, { value: 'price', label: 'PRICE' }].map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setSortBy(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    sortBy === option.value
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+      <Sheet open={isSortSheetOpen} onOpenChange={setIsSortSheetOpen}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Sort Products</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6">
+            <div>
+              <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
+                SORT BY
+              </label>
+              <div className="space-y-2">
+                {[{ value: 'name', label: 'NAME' }, { value: 'price', label: 'PRICE' }].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSortBy(option.value)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
+                      sortBy === option.value
+                        ? 'bg-accent text-background font-medium border-accent'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          
-          <div>
-            <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
-              ORDER
-            </label>
-            <div className="space-y-2">
-              {[{ value: 'asc', label: 'ASCENDING' }, { value: 'desc', label: 'DESCENDING' }].map(option => (
-                <button
-                  key={option.value}
-                  onClick={() => setSortOrder(option.value)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
-                    sortOrder === option.value
-                      ? 'bg-accent text-background font-medium border-accent'
-                      : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            
+            <div>
+              <label className="orbitron-font text-xs font-medium text-foreground mb-2 block">
+                ORDER
+              </label>
+              <div className="space-y-2">
+                {[{ value: 'asc', label: 'ASCENDING' }, { value: 'desc', label: 'DESCENDING' }].map(option => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSortOrder(option.value)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
+                      sortOrder === option.value
+                        ? 'bg-accent text-background font-medium border-accent'
+                        : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+            
+            <button
+              onClick={() => setIsSortSheetOpen(false)}
+              className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
+            >
+              APPLY SORT
+            </button>
           </div>
-          
-          <button
-            onClick={() => setIsSortSheetOpen(false)}
-            className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
-          >
-            APPLY SORT
-          </button>
-        </div>
+        </SheetContent>
       </Sheet>
     </div>
   );

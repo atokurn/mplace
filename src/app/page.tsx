@@ -3,12 +3,12 @@ import Header from '@/components/layout/Header';
 import HomeClient from '@/app/_components/features/public/home/HomeClient';
 
 export const metadata: Metadata = {
-  title: 'PIXEL - Premium Digital Marketplace',
-  description: 'Discover and purchase high-quality digital assets including backgrounds, illustrations, 3D models, textures, and more from talented creators worldwide.',
-  keywords: 'digital marketplace, digital assets, backgrounds, illustrations, 3D models, textures, design resources',
+  title: 'PIXEL - Premium Marketplace',
+  description: 'Discover and purchase high-quality products from talented creators worldwide.',
+  keywords: 'marketplace, products, design resources',
   openGraph: {
-    title: 'PIXEL - Premium Digital Marketplace',
-    description: 'Discover and purchase high-quality digital assets from talented creators worldwide.',
+    title: 'PIXEL - Premium Marketplace',
+    description: 'Discover and purchase high-quality products from talented creators worldwide.',
     type: 'website'
   }
 };
@@ -42,60 +42,6 @@ async function getHomePageData() {
     };
   }
 }
-
-const featuredProducts = [
-  {
-    title: 'Vibrant background',
-    price: '$12',
-    image: '/placeholder.svg',
-    tags: ['Background', 'Abstract']
-  },
-  {
-    title: 'Man with leaves',
-    price: '$8',
-    image: '/placeholder.svg',
-    tags: ['Vector', 'Illustration']
-  },
-  {
-    title: '3D spheres',
-    price: '$15',
-    image: '/placeholder.svg',
-    tags: ['3D', 'Modern']
-  },
-  {
-    title: 'Grunge texture',
-    price: '$5',
-    image: '/placeholder.svg',
-    tags: ['Texture', 'Grunge']
-  }
-];
-
-const products = [
-  {
-    title: 'Vibrant background',
-    price: '$12',
-    image: '/placeholder.svg',
-    tags: ['Background', 'Abstract']
-  },
-  {
-    title: 'Man with leaves',
-    price: '$8',
-    image: '/placeholder.svg',
-    tags: ['Vector', 'Illustration']
-  },
-  {
-    title: 'Plant icon',
-    price: '$3',
-    image: '/placeholder.svg',
-    tags: ['Icon', 'Nature']
-  },
-  {
-    title: 'Dark texture',
-    price: '$7',
-    image: '/placeholder.svg',
-    tags: ['Texture', 'Dark']
-  }
-];
 
 export default async function Home() {
   const { featuredProducts, products, stats } = await getHomePageData();
@@ -164,7 +110,6 @@ export default async function Home() {
   ];
 
   const fallbackStats = {
-    totalDownloads: 8945,
     totalUsers: 2847,
     totalSales: 1523,
     totalRevenue: 125430

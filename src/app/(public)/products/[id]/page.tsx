@@ -3,15 +3,11 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { 
-  Download, 
   Heart, 
   Share2, 
   Star, 
   User, 
   Calendar, 
-  FileText, 
-  Monitor,
-  Shield,
   ArrowLeft
 } from 'lucide-react';
 import Header from '@/components/layout/Header';
@@ -25,19 +21,14 @@ interface Product {
   image: string;
   description: string;
   category: string;
-  downloads: number;
   rating: number;
   createdAt: string;
   featured: boolean;
   author: string;
-  fileSize: string;
-  dimensions: string;
-  format: string;
-  license: string;
 }
 
 interface ProductPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // Fetch product data on server
@@ -45,9 +36,8 @@ async function getProduct(id: string): Promise<{ product: Product; relatedProduc
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const response = await fetch(`${baseUrl}/api/products/${id}`, {
-      cache: 'revalidate',
-      next: { revalidate: 3600 } // Revalidate every hour
-    });
+       next: { revalidate: 3600 } // Revalidate every hour
+     });
     
     if (!response.ok) {
       return null;
@@ -62,7 +52,8 @@ async function getProduct(id: string): Promise<{ product: Product; relatedProduc
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const data = await getProduct(params.id);
+  const { id } = await params;
+  const data = await getProduct(id);
   
   if (!data) {
     return {
@@ -74,7 +65,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const { product } = data;
   
   return {
-    title: `${product.title} - DHXEL Digital Marketplace`,
+    title: `${product.title} - DHXEL Marketplace`,
     description: product.description,
     keywords: product.tags.join(', '),
     openGraph: {
@@ -103,7 +94,8 @@ export async function generateStaticParams() {
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const data = await getProduct(params.id);
+  const { id } = await params;
+  const data = await getProduct(id);
   
   if (!data) {
     notFound();
@@ -162,7 +154,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     />
                   ))}
                   <span className="text-sm text-muted-foreground ml-2">
-                    {product.rating} ({product.downloads} downloads)
+                    {product.rating}
                   </span>
                 </div>
               </div>
@@ -186,8 +178,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               
               <div className="flex gap-3">
                 <button className="flex-1 bg-accent text-accent-foreground px-6 py-3 rounded-xl font-semibold hover:bg-accent/90 transition-colors flex items-center justify-center gap-2">
-                  <Download size={20} />
-                  Purchase & Download
+                  Add to Cart
                 </button>
                 
                 <button className="p-3 border border-border rounded-xl hover:bg-card-bg transition-colors">
@@ -197,37 +188,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <button className="p-3 border border-border rounded-xl hover:bg-card-bg transition-colors">
                   <Share2 size={20} />
                 </button>
-              </div>
-            </div>
-
-            {/* Product Details */}
-            <div className="space-y-4 pt-6 border-t border-border">
-              <h3 className="text-lg font-semibold">Product Details</h3>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">File Size:</span>
-                  <span>{product.fileSize}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Monitor size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">Dimensions:</span>
-                  <span>{product.dimensions}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">Format:</span>
-                  <span>{product.format}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Shield size={16} className="text-muted-foreground" />
-                  <span className="text-muted-foreground">License:</span>
-                  <span>{product.license}</span>
-                </div>
               </div>
             </div>
 

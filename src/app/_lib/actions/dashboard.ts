@@ -116,14 +116,14 @@ export async function getTopProducts(limit: number = 5) {
         const topProducts = await db
           .select({
             id: products.id,
-            name: products.name,
+            name: products.title,
             price: products.price,
-            status: products.status,
-            featured: products.featured,
+            status: products.isActive,
+            featured: products.isFeatured,
             createdAt: products.createdAt,
           })
           .from(products)
-          .where(eq(products.status, "active"))
+          .where(eq(products.isActive, true))
           .orderBy(desc(products.createdAt))
           .limit(limit)
 
@@ -218,7 +218,7 @@ export async function getActivityOverview(days: number = 7) {
             .select({
               id: analyticsEvents.id,
               eventType: analyticsEvents.eventType,
-              url: analyticsEvents.url,
+              referrer: analyticsEvents.referrer,
               createdAt: analyticsEvents.createdAt,
               user: {
                 id: users.id,

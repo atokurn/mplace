@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+// removed unused Separator import
 import { toast } from "sonner";
 
 const settingsFormSchema = z.object({
@@ -79,7 +79,7 @@ const defaultValues: Partial<SettingsFormValues> = {
 
 export function SettingsForm() {
   const form = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsFormSchema),
+    resolver: zodResolver(settingsFormSchema as unknown as z.ZodTypeAny),
     defaultValues,
   });
 

@@ -4,7 +4,7 @@ import { Shell } from "@/app/_components/shared/layouts/shell";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 
 interface OrdersPageProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     per_page?: string;
     sort?: string;
@@ -12,10 +12,11 @@ interface OrdersPageProps {
     status?: string;
     paymentStatus?: string;
     operator?: string;
-  };
+  }>;
 }
 
-export default function OrdersPage({ searchParams }: OrdersPageProps) {
+export default async function OrdersPage({ searchParams }: OrdersPageProps) {
+  const resolved = await searchParams;
   return (
     <Shell variant="sidebar">
       <div className="space-y-6">
@@ -44,7 +45,7 @@ export default function OrdersPage({ searchParams }: OrdersPageProps) {
             />
           }
         >
-          <OrderTableWrapper searchParams={searchParams} />
+          <OrderTableWrapper searchParams={resolved} />
         </React.Suspense>
       </div>
     </Shell>

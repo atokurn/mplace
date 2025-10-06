@@ -1,9 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useLanguage } from '@/contexts/LanguageContext';
 import ProductCard from '@/app/_components/shared/layouts/products/ProductCard';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useState, useEffect } from 'react';
 import { Filter, SortAsc, SortDesc, Search, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -11,15 +10,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface Product {
-  id: number;
+  id: string | number;
   title: string;
   tags: string[];
   price: number;
   image: string;
   description: string;
   category: string;
-  downloads: number;
-  rating: number;
   createdAt: string;
   featured: boolean;
 }
@@ -42,7 +39,6 @@ interface CatalogClientProps {
 }
 
 const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: CatalogClientProps) => {
-  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -61,15 +57,26 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   const [showMoreTags, setShowMoreTags] = useState(false);
 
   // Update URL when filters change
-  const updateURL = (newParams: Record<string, string>) => {
+  const updateURL = (newParams: Record<string, string | string[]>) => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     
     if (newParams && typeof newParams === 'object') {
       Object.entries(newParams).forEach(([key, value]) => {
-        if (value && value !== 'all') {
-          params.set(key, value);
-        } else {
+        if (Array.isArray(value)) {
+          // Remove existing entries for this key
           params.delete(key);
+          const vals = value.filter(v => v && v !== 'all');
+          if (vals.length > 0) {
+            vals.forEach((v) => params.append(key, v));
+          } else {
+            params.delete(key);
+          }
+        } else {
+          if (value && value !== 'all') {
+            params.set(key, value);
+          } else {
+            params.delete(key);
+          }
         }
       });
     }
@@ -82,12 +89,8 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Align with server parser (maps search -> title on server)
     updateURL({ search: searchQuery });
-  };
-
-  const onFilterChange = (category: string) => {
-    setFilterTag(category);
-    updateURL({ category });
   };
 
   const onCategoryToggle = (categoryId: string) => {
@@ -120,7 +123,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   const onSortChange = (newSortBy: string, newSortOrder: string) => {
     setSortBy(newSortBy);
     setSortOrder(newSortOrder);
-    updateURL({ sortBy: newSortBy, sortOrder: newSortOrder });
+    updateURL({ sort: `${newSortBy}.${newSortOrder}` });
     setIsSortSheetOpen(false);
   };
 
@@ -146,16 +149,26 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
   const visibleCategories = showMoreCategories ? categories : categories.slice(0, 6);
   const visibleTags = showMoreTags ? popularTags : popularTags.slice(0, 8);
 
-  const sortOptions = [
-    { id: 'createdAt-desc', label: 'Newest First', sortBy: 'createdAt', sortOrder: 'desc' },
-    { id: 'createdAt-asc', label: 'Oldest First', sortBy: 'createdAt', sortOrder: 'asc' },
-    { id: 'price-asc', label: 'Price: Low to High', sortBy: 'price', sortOrder: 'asc' },
-    { id: 'price-desc', label: 'Price: High to Low', sortBy: 'price', sortOrder: 'desc' },
-    { id: 'title-asc', label: 'Name: A to Z', sortBy: 'title', sortOrder: 'asc' },
-    { id: 'title-desc', label: 'Name: Z to A', sortBy: 'title', sortOrder: 'desc' },
-    { id: 'downloads-desc', label: 'Most Popular', sortBy: 'downloads', sortOrder: 'desc' },
-    { id: 'rating-desc', label: 'Highest Rated', sortBy: 'rating', sortOrder: 'desc' }
-  ];
+  // Sinkronkan state saat search params / SSR filters berubah
+  useEffect(() => {
+    setSortBy(initialFilters.sortBy || 'createdAt');
+    setSortOrder(initialFilters.sortOrder || 'desc');
+    setFilterTag(initialFilters.category || 'all');
+    setSearchQuery(initialFilters.search || '');
+  }, [initialFilters.sortBy, initialFilters.sortOrder, initialFilters.category, initialFilters.search, searchParams]);
+
+  // Sync tags and price range from URL to keep UI consistent when navigating
+  useEffect(() => {
+    const nextTags = searchParams ? searchParams.getAll('tags') : [];
+    const priceVals = searchParams ? searchParams.getAll('price') : [];
+    const [min = '', max = ''] = priceVals;
+    const nextCategories = searchParams ? searchParams.getAll('category') : [];
+    setSelectedTags(nextTags);
+    setSelectedCategories(nextCategories);
+    setPriceRange({ min, max });
+  }, [searchParams]);
+
+  // removed unused const sortOptions = [...]
 
   return (
     <div>
@@ -165,13 +178,15 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
           <div className="flex items-center h-20 px-4 justify-center">
             <div className="relative w-full max-w-md">
               <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
-              />
+              <form onSubmit={onSearch}>
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                />
+              </form>
             </div>
           </div>
         </div>
@@ -185,7 +200,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
             {/* Products Count */}
             <div className="flex-1 px-4 border-r border-border h-full flex items-center">
               <p className="orbitron-font text-xs text-muted-foreground font-medium">
-                {initialProducts.length} PRODUCTS
+                {initialPagination.totalProducts} PRODUCTS
               </p>
             </div>
             
@@ -220,7 +235,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
       <section className="py-0">
         {initialProducts.length > 0 ? (
           <motion.div
-            className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 border-t border-l border-border"
+            className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-0 border-t border-l border-border items-stretch content-stretch auto-rows-fr"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.4 }}
@@ -231,16 +246,14 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: index * 0.05 }}
+                className="h-full"
               >
                 <ProductCard
-                  id={product.id}
                   title={product.title}
                   tags={product.tags}
                   price={product.price}
                   image={product.image}
                   index={index}
-                  downloads={product.downloads}
-                  rating={product.rating}
                 />
               </motion.div>
             ))}
@@ -264,7 +277,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
         <div className="flex justify-center items-center gap-4 mt-12">
           {initialPagination.hasPrevPage && (
             <Link
-              href={`/catalog?${new URLSearchParams({ ...(searchParams ? Object.fromEntries(searchParams.entries()) : {}), page: String(initialPagination.currentPage - 1) }).toString()}`}
+              href={`/catalog?${(() => { const p = new URLSearchParams(searchParams?.toString() || ''); p.set('page', String(initialPagination.currentPage - 1)); return p.toString(); })()}`}
               className="flex items-center gap-2 px-4 py-2 bg-card-bg border border-border rounded-xl hover:bg-card-bg/80 transition-colors"
             >
               <ChevronLeft size={20} />
@@ -278,7 +291,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
           
           {initialPagination.hasNextPage && (
             <Link
-              href={`/catalog?${new URLSearchParams({ ...(searchParams ? Object.fromEntries(searchParams.entries()) : {}), page: String(initialPagination.currentPage + 1) }).toString()}`}
+              href={`/catalog?${(() => { const p = new URLSearchParams(searchParams?.toString() || ''); p.set('page', String(initialPagination.currentPage + 1)); return p.toString(); })()}`}
               className="flex items-center gap-2 px-4 py-2 bg-card-bg border border-border rounded-xl hover:bg-card-bg/80 transition-colors"
             >
               Next
@@ -290,17 +303,51 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
 
       {/* Filter Sheet */}
       <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-        <SheetContent side="right" className="w-full sm:w-full">
+        <SheetContent side="right" className="w-full sm:w-full overflow-hidden">
           <SheetHeader>
             <SheetTitle className="orbitron-font text-lg font-medium text-foreground uppercase">FILTER</SheetTitle>
           </SheetHeader>
-          <div className="h-full flex flex-col mt-4">          
+          <div className="h-full min-h-0 flex flex-col mt-4">
             {/* Active Filters Count & Clear */}
             {getActiveFiltersCount() > 0 && (
               <div className="flex items-center justify-between p-4 bg-secondary/30 border-b border-border">
-                <span className="text-xs text-muted-foreground">
-                  {getActiveFiltersCount()} filter{getActiveFiltersCount() > 1 ? 's' : ''} applied
-                </span>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {/* Category chips */}
+                  {selectedCategories.map((cat) => (
+                    <button
+                      key={`cat-${cat}`}
+                      onClick={() => onCategoryToggle(cat)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] border bg-secondary hover:bg-secondary/80 text-foreground"
+                      aria-label={`Remove category ${cat}`}
+                    >
+                      <span>Category: {cat}</span>
+                      <X size={10} />
+                    </button>
+                  ))}
+                  {/* Tag chips */}
+                  {selectedTags.map((tag) => (
+                    <button
+                      key={`tag-${tag}`}
+                      onClick={() => onTagToggle(tag)}
+                      className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] border bg-secondary hover:bg-secondary/80 text-foreground"
+                      aria-label={`Remove tag ${tag}`}
+                    >
+                      <span>Tag: {tag}</span>
+                      <X size={10} />
+                    </button>
+                  ))}
+                  {/* Price chip */}
+                  {(priceRange.min || priceRange.max) && (
+                    <button
+                      onClick={() => setPriceRange({ min: '', max: '' })}
+                      className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] border bg-secondary hover:bg-secondary/80 text-foreground"
+                      aria-label="Remove price filter"
+                    >
+                      <span>Price: {priceRange.min || '0'}{(priceRange.min || priceRange.max) ? ' - ' : ''}{priceRange.max || '∞'}</span>
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={clearAllFilters}
                   className="text-xs text-accent hover:text-accent/80 transition-colors"
@@ -312,127 +359,129 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
             
             {/* Scrollable Filter Content */}
             <ScrollArea className="flex-1 pr-4">
-              {/* Categories Section */}
-              <div className="border-b border-border">
-                <div className="p-4">
-                  <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Category</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                     {visibleCategories.map(category => (
-                       <label key={category.id} className="flex items-center gap-2 cursor-pointer group">
-                         <div className="relative">
-                           <input
-                             type="checkbox"
-                             checked={selectedCategories.includes(category.id)}
-                             onChange={() => onCategoryToggle(category.id)}
-                             className="sr-only"
-                           />
-                           <div className={`w-4 h-4 rounded border-2 transition-all ${
-                             selectedCategories.includes(category.id)
-                               ? 'bg-accent border-accent'
-                               : 'border-border group-hover:border-accent/50'
-                           }`}>
-                             {selectedCategories.includes(category.id) && (
-                               <div className="w-full h-full flex items-center justify-center">
-                                 <div className="w-2 h-2 bg-background rounded-sm" />
-                               </div>
-                             )}
+              <div className="pb-28 sm:pb-24 pb-[max(env(safe-area-inset-bottom),6rem)]">
+                {/* Categories Section */}
+                <div className="border-b border-border">
+                  <div className="p-4">
+                    <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Category</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                       {visibleCategories.map(category => (
+                         <label key={category.id} className="flex items-center gap-2 cursor-pointer group">
+                           <div className="relative">
+                             <input
+                               type="checkbox"
+                               checked={selectedCategories.includes(category.id)}
+                               onChange={() => onCategoryToggle(category.id)}
+                               className="sr-only"
+                             />
+                             <div className={`w-4 h-4 rounded border-2 transition-all ${
+                               selectedCategories.includes(category.id)
+                                 ? 'bg-accent border-accent'
+                                 : 'border-border group-hover:border-accent/50'
+                             }`}>
+                               {selectedCategories.includes(category.id) && (
+                                 <div className="w-full h-full flex items-center justify-center">
+                                   <div className="w-2 h-2 bg-background rounded-sm" />
+                                 </div>
+                               )}
+                             </div>
                            </div>
-                         </div>
-                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                           <div className={`w-3 h-3 rounded-full flex-shrink-0 ${category.color}`} />
-                           <span className="text-sm text-foreground group-hover:text-accent transition-colors truncate">
-                             {category.name}
-                           </span>
-                         </div>
-                       </label>
-                     ))}
-                  </div>
-                  
-                  {categories.length > 6 && (
-                    <button
-                      onClick={() => setShowMoreCategories(!showMoreCategories)}
-                      className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
-                    >
-                      {showMoreCategories ? (
-                        <>
-                          <ChevronUp size={14} />
-                          Show less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={14} />
-                          Show more ({categories.length - 6})
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Tags Section */}
-              <div className="border-b border-border">
-                <div className="p-4">
-                  <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {visibleTags.map(tag => (
+                           <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${category.color}`} />
+                             <span className="text-sm text-foreground group-hover:text-accent transition-colors truncate">
+                               {category.name}
+                             </span>
+                           </div>
+                         </label>
+                       ))}
+                    </div>
+                    
+                    {categories.length > 6 && (
                       <button
-                        key={tag}
-                        onClick={() => onTagToggle(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs transition-colors border ${
-                          selectedTags.includes(tag)
-                            ? 'bg-accent text-background border-accent'
-                            : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
-                        }`}
+                        onClick={() => setShowMoreCategories(!showMoreCategories)}
+                        className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
                       >
-                        {tag}
+                        {showMoreCategories ? (
+                          <>
+                            <ChevronUp size={14} />
+                            Show less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={14} />
+                            Show more ({categories.length - 6})
+                          </>
+                        )}
                       </button>
-                    ))}
+                    )}
                   </div>
-                  
-                  {popularTags.length > 8 && (
-                    <button
-                      onClick={() => setShowMoreTags(!showMoreTags)}
-                      className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
-                    >
-                      {showMoreTags ? (
-                        <>
-                          <ChevronUp size={14} />
-                          Show less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={14} />
-                          Show more ({popularTags.length - 8})
-                        </>
-                      )}
-                    </button>
-                  )}
                 </div>
-              </div>
 
-              {/* Price Range Section */}
-              <div className="p-4">
-                <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Price Range</h3>
-                <div className="flex gap-2 mb-3">
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">Min</label>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={priceRange.min}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
-                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                    />
+                {/* Tags Section */}
+                <div className="border-b border-border">
+                  <div className="p-4">
+                    <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Tags</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleTags.map(tag => (
+                        <button
+                          key={tag}
+                          onClick={() => onTagToggle(tag)}
+                          className={`px-3 py-1.5 rounded-full text-xs transition-colors border ${
+                            selectedTags.includes(tag)
+                              ? 'bg-accent text-background border-accent'
+                              : 'bg-secondary text-foreground hover:bg-secondary/80 border-border'
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {popularTags.length > 8 && (
+                      <button
+                        onClick={() => setShowMoreTags(!showMoreTags)}
+                        className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors mt-3"
+                      >
+                        {showMoreTags ? (
+                          <>
+                            <ChevronUp size={14} />
+                            Show less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={14} />
+                            Show more ({popularTags.length - 8})
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-muted-foreground mb-1 block">Max</label>
-                    <input
-                      type="number"
-                      placeholder="100"
-                      value={priceRange.max}
-                      onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
-                      className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-                    />
+                </div>
+
+                {/* Price Range Section */}
+                <div className="p-4">
+                  <h3 className="orbitron-font text-xs font-medium text-foreground mb-3 uppercase">Price Range</h3>
+                  <div className="flex gap-2 mb-3">
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Min</label>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={priceRange.min}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-muted-foreground mb-1 block">Max</label>
+                      <input
+                        type="number"
+                        placeholder="100"
+                        value={priceRange.max}
+                        onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                        className="w-full px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                      />
+                    </div>
                   </div>
                 </div>
                 
@@ -462,9 +511,29 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
             </ScrollArea>
 
             {/* Sticky Apply Button */}
-            <div className="sticky bottom-0 bg-background border-t p-4 pt-4 mt-4">
-            <button
-                onClick={() => setIsFilterSheetOpen(false)}
+            <div className="sticky bottom-0 bg-background border-t p-4 pt-4 mt-4 pb-[max(env(safe-area-inset-bottom),1rem)]">
+              <button
+                onClick={() => {
+                  const next: Record<string, string | string[]> = {};
+                  // Apply multi categories
+                  if (selectedCategories.length > 0) next.category = selectedCategories;
+                  else next.category = [];
+                  // Apply tags
+                  if (selectedTags.length > 0) next.tags = selectedTags;
+                  else next.tags = [];
+                  // Apply price range
+                  const min = priceRange.min.trim();
+                  const max = priceRange.max.trim();
+                  if (min || max) {
+                    // Keep two entries [min, max] to preserve order for parser
+                    next.price = [min || '', max || ''];
+                  } else {
+                    next.price = [];
+                  }
+
+                  updateURL(next);
+                  setIsFilterSheetOpen(false);
+                }}
                 className="w-full orbitron-font bg-accent text-background px-4 py-3 rounded-xl hover:bg-accent/90 transition-colors text-sm font-medium"
               >
                 APPLY FILTERS
@@ -489,7 +558,11 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
                 {[{ value: 'title', label: 'NAME' }, { value: 'price', label: 'PRICE' }, { value: 'createdAt', label: 'DATE' }].map(option => (
                   <button
                     key={option.value}
-                    onClick={() => setSortBy(option.value)}
+                    onClick={() => {
+                      setSortBy(option.value);
+                      // Update URL immediately when Sort By changes
+                      updateURL({ sort: `${option.value}.${sortOrder}` });
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
                       sortBy === option.value
                         ? 'bg-accent text-background font-medium border-accent'
@@ -510,7 +583,11 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
                 {[{ value: 'asc', label: 'ASCENDING' }, { value: 'desc', label: 'DESCENDING' }].map(option => (
                   <button
                     key={option.value}
-                    onClick={() => setSortOrder(option.value)}
+                    onClick={() => {
+                      setSortOrder(option.value);
+                      // Update URL immediately when Order changes
+                      updateURL({ sort: `${sortBy}.${option.value}` });
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors border ${
                       sortOrder === option.value
                         ? 'bg-accent text-background font-medium border-accent'
@@ -524,7 +601,7 @@ const CatalogClient = ({ initialProducts, initialPagination, initialFilters }: C
             </div>
             
             <button
-              onClick={() => setIsSortSheetOpen(false)}
+              onClick={() => onSortChange(sortBy, sortOrder)}
               className="w-full orbitron-font bg-accent text-background px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors text-xs font-medium border border-accent"
             >
               APPLY SORT

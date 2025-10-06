@@ -3,7 +3,7 @@ import type { FilterItemSchema } from "@/lib/parsers";
 import type { ColumnSort, Row, RowData } from "@tanstack/react-table";
 
 declare module "@tanstack/react-table" {
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     placeholder?: string;
@@ -30,6 +30,7 @@ export interface ExtendedColumnSort<TData> extends Omit<ColumnSort, "id"> {
   id: Extract<keyof TData, string>;
 }
 
+// Use a single generic to avoid unused type params
 export interface ExtendedColumnFilter<TData> extends FilterItemSchema {
   id: Extract<keyof TData, string>;
 }

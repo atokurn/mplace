@@ -1,29 +1,35 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { products, type SelectProduct } from "@/lib/db/schema";
+import { products } from "@/lib/db/schema";
 import { takeFirstOrThrow } from "@/lib/db/utils";
-import { asc, eq, inArray, not } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { revalidateTag, unstable_noStore } from "next/cache";
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import type { Session } from "next-auth";
+import type { NewProduct } from "@/lib/db/schema";
 
 import { getErrorMessage } from "@/lib/handle-error";
 
 import type { 
-  CreateProductSchema, 
   UpdateProductSchema,
   DeleteProductsSchema,
   UpdateProductsSchema 
 } from "../validations/products";
+import { 
+  createProductSchema,
+  updateProductSchema,
+  deleteProductsSchema as deleteProductsZod,
+  updateProductsSchema as updateProductsZod,
+} from "../validations/products";
+import { z } from "zod";
+import { deleteMultiple, deleteSingle } from "@/lib/actions";
 
-export async function createProduct(input: CreateProductSchema & {
-  hasCommercialPrice?: boolean;
-  commercialPrice?: string;
-}) {
+export async function createProduct(input: z.input<typeof createProductSchema>) {
   unstable_noStore();
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.id) {
       return {
         data: null,
@@ -31,15 +37,16 @@ export async function createProduct(input: CreateProductSchema & {
       };
     }
 
-    const { hasCommercialPrice, ...productData } = input;
-    
+    // Validate and prepare product data
+    const parsed = createProductSchema.parse(input);
+    const productData = {
+      ...parsed,
+      createdBy: session.user.id,
+    } as NewProduct;
+
     const newProduct = await db
       .insert(products)
-      .values({
-        ...productData,
-        commercialPrice: hasCommercialPrice ? productData.commercialPrice : null,
-        createdBy: session.user.id,
-      })
+      .values(productData)
       .returning()
       .then(takeFirstOrThrow);
 
@@ -60,11 +67,71 @@ export async function createProduct(input: CreateProductSchema & {
 export async function updateProduct(input: UpdateProductSchema) {
   unstable_noStore();
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.id) {
       return {
         data: null,
         error: "You must be logged in to update a product",
+      };
+    }
+
+    const { id: idStr } = updateProductSchema.pick({ id: true }).parse(input);
+    const updateData = updateProductSchema.omit({ id: true }).parse(input);
+     const product = await db
+       .select()
+       .from(products)
+      .where(eq(products.id, idStr))
+       .limit(1)
+       .then((res) => res[0]);
+
+    if (!product) {
+      return {
+        data: null,
+        error: "Product not found",
+      };
+    }
+
+    // Check if user is admin or the creator of the product
+    if (session.user.role !== "admin" && product.createdBy !== session.user.id) {
+      return {
+        data: null,
+        error: "You don't have permission to update this product",
+      };
+    }
+
+     const updatedProduct = await db
+       .update(products)
+       .set({
+         ...(updateData as Partial<NewProduct>),
+         updatedAt: new Date(),
+       })
+       .where(eq(products.id, idStr))
+       .returning()
+       .then(takeFirstOrThrow);
+
+    revalidateTag("products");
+    revalidateTag(`product-${idStr}`);
+
+    return {
+      data: updatedProduct,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function deleteProduct(input: { id: string }) {
+  unstable_noStore();
+  try {
+    const session = await getServerSession(authOptions) as Session | null;
+    if (!session?.user?.id) {
+      return {
+        data: null,
+        error: "You must be logged in to delete this product",
       };
     }
 
@@ -82,32 +149,18 @@ export async function updateProduct(input: UpdateProductSchema) {
       };
     }
 
-    // Check if user is admin or the creator of the product
     if (session.user.role !== "admin" && product.createdBy !== session.user.id) {
       return {
         data: null,
-        error: "You don't have permission to update this product",
+        error: "You don't have permission to delete this product",
       };
     }
 
-    const { id, ...updateData } = input;
-    const updatedProduct = await db
-      .update(products)
-      .set({
-        ...updateData,
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, input.id))
-      .returning()
-      .then(takeFirstOrThrow);
-
-    revalidateTag("products");
-    revalidateTag(`product-${input.id}`);
-
-    return {
-      data: updatedProduct,
-      error: null,
-    };
+    return deleteSingle({
+      table: products,
+      id: input.id,
+      revalidateTagName: "products",
+    });
   } catch (err) {
     return {
       data: null,
@@ -119,7 +172,7 @@ export async function updateProduct(input: UpdateProductSchema) {
 export async function deleteProducts(input: DeleteProductsSchema) {
   unstable_noStore();
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.id) {
       return {
         data: null,
@@ -134,20 +187,13 @@ export async function deleteProducts(input: DeleteProductsSchema) {
       };
     }
 
-    const deletedProducts = await db
-      .delete(products)
-      .where(inArray(products.id, input.ids))
-      .returning();
+    const parsed: DeleteProductsSchema = deleteProductsZod.parse(input);
 
-    revalidateTag("products");
-    input.ids.forEach(id => {
-      revalidateTag(`product-${id}`);
+    return deleteMultiple({
+      table: products,
+      ids: parsed.ids,
+      revalidateTagName: "products",
     });
-
-    return {
-      data: deletedProducts,
-      error: null,
-    };
   } catch (err) {
     return {
       data: null,
@@ -159,7 +205,7 @@ export async function deleteProducts(input: DeleteProductsSchema) {
 export async function updateProducts(input: UpdateProductsSchema) {
   unstable_noStore();
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.id) {
       return {
         data: null,
@@ -174,11 +220,12 @@ export async function updateProducts(input: UpdateProductsSchema) {
       };
     }
 
-    const { ids, ...updateData } = input;
+    const parsed: UpdateProductsSchema = updateProductsZod.parse(input);
+    const { ids, ...updateData } = parsed;
     const updatedProducts = await db
       .update(products)
       .set({
-        ...updateData,
+        ...(updateData as Partial<NewProduct>),
         updatedAt: new Date(),
       })
       .where(inArray(products.id, ids))
@@ -204,11 +251,11 @@ export async function updateProducts(input: UpdateProductsSchema) {
 export async function toggleProductStatus(id: string) {
   unstable_noStore();
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions) as Session | null;
     if (!session?.user?.id) {
       return {
         data: null,
-        error: "You must be logged in to update product status",
+        error: "You must be logged in to update this product",
       };
     }
 
@@ -226,7 +273,6 @@ export async function toggleProductStatus(id: string) {
       };
     }
 
-    // Check if user is admin or the creator of the product
     if (session.user.role !== "admin" && product.createdBy !== session.user.id) {
       return {
         data: null,
@@ -238,48 +284,6 @@ export async function toggleProductStatus(id: string) {
       .update(products)
       .set({
         isActive: !product.isActive,
-        updatedAt: new Date(),
-      })
-      .where(eq(products.id, id))
-      .returning()
-      .then(takeFirstOrThrow);
-
-    revalidateTag("products");
-    revalidateTag(`product-${id}`);
-
-    return {
-      data: updatedProduct,
-      error: null,
-    };
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-export async function incrementDownloadCount(id: string) {
-  unstable_noStore();
-  try {
-    const product = await db
-      .select()
-      .from(products)
-      .where(eq(products.id, id))
-      .limit(1)
-      .then((res) => res[0]);
-
-    if (!product) {
-      return {
-        data: null,
-        error: "Product not found",
-      };
-    }
-
-    const updatedProduct = await db
-      .update(products)
-      .set({
-        downloadCount: product.downloadCount + 1,
         updatedAt: new Date(),
       })
       .where(eq(products.id, id))

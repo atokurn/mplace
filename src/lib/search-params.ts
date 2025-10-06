@@ -6,7 +6,7 @@ import {
   parseAsStringEnum,
   parseAsArrayOf,
   parseAsBoolean,
-  createParser,
+  parseAsJson,
 } from 'nuqs/server';
 import { z } from 'zod';
 
@@ -17,24 +17,12 @@ const filterItemSchema = z.object({
   operator: z.string().optional(),
 });
 
-const getFiltersStateParser = () => {
-  return createParser({
-    parse: (value) => {
-      try {
-        if (!value || value === '') return [];
-        const parsed = JSON.parse(value);
-        const result = z.array(filterItemSchema).safeParse(parsed);
-        return result.success ? result.data : [];
-      } catch {
-        return [];
-      }
-    },
-    serialize: (value) => {
-      if (!value || value.length === 0) return '';
-      return JSON.stringify(value);
-    },
+function getFiltersStateParser() {
+  return parseAsJson((obj) => {
+    const result = z.array(filterItemSchema).safeParse(obj);
+    return result.success ? result.data : null;
   });
-};
+}
 
 // Products search params
 export const productsSearchParamsCache = createSearchParamsCache({
@@ -44,6 +32,7 @@ export const productsSearchParamsCache = createSearchParamsCache({
   title: parseAsString.withDefault(''),
   category: parseAsArrayOf(parseAsString).withDefault([]),
   price: parseAsArrayOf(parseAsString).withDefault([]),
+  tags: parseAsArrayOf(parseAsString).withDefault([]),
   status: parseAsArrayOf(parseAsString).withDefault([]),
   isActive: parseAsArrayOf(parseAsString).withDefault([]),
   operator: parseAsStringEnum(['and', 'or']).withDefault('and'),
@@ -65,11 +54,11 @@ export const categoriesSearchParamsCache = createSearchParamsCache({
 
 export const usersSearchParamsCache = createSearchParamsCache({
   page: parseAsInteger.withDefault(1),
-  per_page: parseAsInteger.withDefault(10),
+  perPage: parseAsInteger.withDefault(10),
   sort: parseAsString.withDefault('createdAt.desc'),
   name: parseAsString.withDefault(''),
   email: parseAsString.withDefault(''),
-  role: parseAsStringEnum(['user', 'admin']).withDefault(''),
+  role: parseAsArrayOf(parseAsStringEnum(['user', 'admin'])).withDefault([]),
   operator: parseAsStringEnum(['and', 'or']).withDefault('and'),
 });
 
@@ -78,8 +67,8 @@ export const ordersSearchParamsCache = createSearchParamsCache({
   per_page: parseAsInteger.withDefault(10),
   sort: parseAsString.withDefault('createdAt.desc'),
   orderNumber: parseAsString.withDefault(''),
-  status: parseAsStringEnum(['pending', 'processing', 'completed', 'cancelled', 'refunded']).withDefault(''),
-  paymentStatus: parseAsStringEnum(['pending', 'paid', 'failed', 'refunded']).withDefault(''),
+  status: parseAsStringEnum(['pending', 'processing', 'completed', 'cancelled', 'refunded']).withDefault('pending'),
+  paymentStatus: parseAsStringEnum(['pending', 'paid', 'failed', 'refunded']).withDefault('pending'),
   operator: parseAsStringEnum(['and', 'or']).withDefault('and'),
 });
 
@@ -87,7 +76,7 @@ export const analyticsSearchParamsCache = createSearchParamsCache({
   page: parseAsInteger.withDefault(1),
   per_page: parseAsInteger.withDefault(10),
   sort: parseAsString.withDefault("createdAt.desc"),
-  eventType: parseAsArrayOf(parseAsStringEnum(["page_view", "product_view", "add_to_cart", "purchase", "search", "download"])).withDefault([]),
+  eventType: parseAsArrayOf(parseAsStringEnum(["page_view", "product_view", "add_to_cart", "purchase", "search"])).withDefault([]),
   userId: parseAsString.withDefault(""),
   dateFrom: parseAsString.withDefault(""),
   dateTo: parseAsString.withDefault(""),
@@ -100,7 +89,7 @@ export const settingsSearchParamsCache = createSearchParamsCache({
   sort: parseAsString.withDefault("createdAt.desc"),
   key: parseAsString.withDefault(""),
   category: parseAsArrayOf(parseAsStringEnum(["general", "payment", "email", "storage"])).withDefault([]),
-  isPublic: parseAsBoolean.withDefault(undefined),
+  isPublic: parseAsBoolean.withDefault(false),
   operator: parseAsStringEnum(["and", "or"]).withDefault("and"),
 });
 
@@ -113,11 +102,12 @@ export const dashboardSearchParamsCache = createSearchParamsCache({
 
 export const productsSearchParamsSerializer = createSerializer({
   page: parseAsInteger.withDefault(1),
-  per_page: parseAsInteger.withDefault(10),
+  perPage: parseAsInteger.withDefault(10),
   sort: parseAsString.withDefault('createdAt.desc'),
   title: parseAsString.withDefault(''),
   category: parseAsString.withDefault(''),
-  status: parseAsArrayOf(parseAsString).withDefault([]),
+  price: parseAsArrayOf(parseAsString).withDefault([]),
+  tags: parseAsArrayOf(parseAsString).withDefault([]),
   isActive: parseAsArrayOf(parseAsString).withDefault([]),
   operator: parseAsStringEnum(['and', 'or']).withDefault('and'),
 });
@@ -136,12 +126,12 @@ export function getValidFilters() {
       type: 'select' as const,
     },
     {
-      id: 'status',
+      id: 'isActive',
       label: 'Status',
       type: 'select' as const,
       options: [
-        { label: 'Active', value: 'active' },
-        { label: 'Inactive', value: 'inactive' },
+        { label: 'Active', value: 'true' },
+        { label: 'Inactive', value: 'false' },
       ],
     },
   ];
@@ -175,12 +165,12 @@ export function getSortOptions() {
       value: 'price.desc',
     },
     {
-      label: 'Downloads (Most)',
-      value: 'downloadCount.desc',
+      label: 'Views (Most)',
+      value: 'viewCount.desc',
     },
     {
-      label: 'Downloads (Least)',
-      value: 'downloadCount.asc',
+      label: 'Views (Least)',
+      value: 'viewCount.asc',
     },
   ];
 }

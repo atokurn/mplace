@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db"
 import { settings } from "@/lib/db/schema"
-import { handleError } from "@/lib/handle-error"
+import { getErrorMessage } from "@/lib/handle-error"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { and, eq, inArray } from "drizzle-orm"
@@ -52,7 +52,13 @@ export async function createSetting(input: z.infer<typeof createSettingSchema>) 
 
     const [setting] = await db
       .insert(settings)
-      .values(data)
+      .values({
+        key: data.key,
+        value: data.value,
+        category: data.category,
+        description: data.description,
+        isPublic: data.isPublic,
+      })
       .returning()
 
     revalidatePath("/settings")
@@ -62,7 +68,7 @@ export async function createSetting(input: z.infer<typeof createSettingSchema>) 
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
@@ -87,7 +93,7 @@ export async function updateSetting(input: { id: string } & z.infer<typeof updat
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
@@ -128,7 +134,7 @@ export async function updateSettingByKey(key: string, value: string) {
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
@@ -145,7 +151,7 @@ export async function deleteSetting(input: { id: string }) {
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
@@ -162,7 +168,7 @@ export async function deleteSettings(input: z.infer<typeof deleteSettingsSchema>
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
@@ -185,12 +191,15 @@ export async function updateSettings(input: z.infer<typeof updateSettingsSchema>
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 
 // Bulk update settings by category
-export async function updateSettingsByCategory(category: string, updates: Record<string, string>) {
+export async function updateSettingsByCategory(
+  category: "general" | "payment" | "email" | "storage",
+  updates: Record<string, string>
+) {
   try {
     if (!updates || typeof updates !== 'object') {
       throw new Error('Invalid updates object');
@@ -205,7 +214,7 @@ export async function updateSettingsByCategory(category: string, updates: Record
         })
         .where(and(
           eq(settings.key, key),
-          eq(settings.category, category as any)
+          eq(settings.category, category)
         ))
     )
 
@@ -218,7 +227,7 @@ export async function updateSettingsByCategory(category: string, updates: Record
       error: null,
     }
   } catch (err) {
-    return handleError(err)
+    return { data: null, error: getErrorMessage(err) }
   }
 }
 

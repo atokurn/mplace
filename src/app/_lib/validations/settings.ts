@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const searchParamsSchemaSettings = settingsSearchParamsCache
 
-export type GetSettingsSchema = z.infer<typeof searchParamsSchemaSettings>
+export type GetSettingsSchema = Awaited<ReturnType<typeof settingsSearchParamsCache.parse>>
 
 export const createSettingSchema = z.object({
   key: z.string().min(1, "Key is required"),

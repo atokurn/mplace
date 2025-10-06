@@ -1,68 +1,85 @@
-'use client';
+"use client";
 
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import ProductCard from '@/app/_components/shared/layouts/products/ProductCard';
 import Link from 'next/link';
 
-const featuredProducts = [
+// Default fallback data used when props are empty
+const defaultFeaturedProducts = [
   {
     title: 'Vibrant background',
-    price: '$12',
+    price: 12,
     image: '/placeholder.svg',
     tags: ['Background', 'Abstract']
   },
   {
     title: 'Man with leaves',
-    price: '$8',
+    price: 8,
     image: '/placeholder.svg',
     tags: ['Vector', 'Illustration']
   },
   {
     title: '3D spheres',
-    price: '$15',
+    price: 15,
     image: '/placeholder.svg',
     tags: ['3D', 'Modern']
   },
   {
     title: 'Grunge texture',
-    price: '$5',
+    price: 5,
     image: '/placeholder.svg',
     tags: ['Texture', 'Grunge']
   }
 ];
 
-const products = [
+const defaultProducts = [
   {
     title: 'Vibrant background',
-    price: '$12',
+    price: 12,
     image: '/placeholder.svg',
     tags: ['Background', 'Abstract']
   },
   {
     title: 'Man with leaves',
-    price: '$8',
+    price: 8,
     image: '/placeholder.svg',
     tags: ['Vector', 'Illustration']
   },
   {
     title: 'Plant icon',
-    price: '$3',
+    price: 3,
     image: '/placeholder.svg',
     tags: ['Icon', 'Nature']
   },
   {
     title: 'Dark texture',
-    price: '$7',
+    price: 7,
     image: '/placeholder.svg',
     tags: ['Texture', 'Dark']
   }
 ];
 
-export default function Home() {
+type HomeProduct = {
+  id?: string | number;
+  title: string;
+  price: number | string;
+  image: string;
+  tags: string[];
+};
+
+type HomeStats = {
+  // removed totalDownloads
+  totalUsers?: number;
+  totalSales?: number;
+  totalRevenue?: number;
+};
+
+export default function HomeClient({
+  featuredProducts = defaultFeaturedProducts,
+  products = defaultProducts,
+}: HomeClientProps) {
   return (
     <div className="min-h-screen bg-background">
-      
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-yellow-200 to-yellow-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -73,8 +90,9 @@ export default function Home() {
               transition={{ duration: 0.8 }}
             >
               <h1 className="orbitron-title text-6xl lg:text-7xl font-bold text-black mb-8 leading-tight">
-                DIGITAL<br />
-                ASSET<br />
+                {/* changed wording to general marketplace */}
+                PREMIUM<br />
+                PRODUCTS<br />
                 MARKETPL<br />
                 ACE
               </h1>
@@ -88,7 +106,7 @@ export default function Home() {
                 </Link>
               </motion.button>
             </motion.div>
-            
+
             <motion.div
               className="relative"
               initial={{ opacity: 0, x: 50 }}
@@ -116,7 +134,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Digital Items */}
+      {/* Featured Items */}
       <section className="bg-background py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.h2
@@ -125,22 +143,22 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            Featured Digital Items
+            Featured Products
           </motion.h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {featuredProducts.map((product, index) => (
               <ProductCard
                 key={index}
                 title={product.title}
-                price={product.price}
+                price={parsePrice(product.price)}
                 image={product.image}
                 tags={product.tags}
                 index={index}
               />
             ))}
           </div>
-          
+
           <div className="text-center">
             <motion.button
               className="bg-secondary text-foreground px-8 py-3  font-semibold hover:bg-accent hover:text-background transition-colors border border-border"
@@ -162,15 +180,15 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            Product
+            Products
           </motion.h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {products.map((product, index) => (
               <ProductCard
                 key={index}
                 title={product.title}
-                price={product.price}
+                price={parsePrice(product.price)}
                 image={product.image}
                 tags={product.tags}
                 index={index}
@@ -181,4 +199,17 @@ export default function Home() {
       </section>
     </div>
   );
+}
+
+interface HomeClientProps {
+  featuredProducts?: HomeProduct[];
+  products?: HomeProduct[];
+  stats?: HomeStats;
+}
+
+function parsePrice(price: number | string): number {
+  if (typeof price === 'number') return price;
+  const cleaned = price.replace(/[^0-9.\-]/g, '');
+  const parsed = parseFloat(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
 }

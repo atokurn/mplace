@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db"
 import { analyticsEvents, users } from "@/lib/db/schema"
-import { and, count, desc, asc, eq, ilike, inArray, or, gte, lte, sql } from "drizzle-orm"
+import { and, count, desc, asc, eq, inArray, or, gte, lte, sql } from "drizzle-orm"
 import { unstable_cache } from "next/cache"
 import type { GetAnalyticsSchema } from "@/app/_lib/validations/analytics"
 
@@ -38,9 +38,18 @@ export async function getAnalyticsEvents(input: GetAnalyticsSchema) {
           : or(...conditions)
         : undefined
 
+      const sortableColumns = {
+        createdAt: analyticsEvents.createdAt,
+        eventType: analyticsEvents.eventType,
+        userId: analyticsEvents.userId,
+        sessionId: analyticsEvents.sessionId,
+        ipAddress: analyticsEvents.ipAddress,
+        referrer: analyticsEvents.referrer,
+      }
+      const sortCol = sortableColumns[(sortField as keyof typeof sortableColumns)] ?? analyticsEvents.createdAt
       const orderByClause = sortOrder === "desc" 
-        ? desc(analyticsEvents[sortField as keyof typeof analyticsEvents] || analyticsEvents.createdAt)
-        : asc(analyticsEvents[sortField as keyof typeof analyticsEvents] || analyticsEvents.createdAt)
+        ? desc(sortCol)
+        : asc(sortCol)
 
       const [data, totalResult] = await Promise.all([
         db
@@ -53,7 +62,7 @@ export async function getAnalyticsEvents(input: GetAnalyticsSchema) {
             userAgent: analyticsEvents.userAgent,
             ipAddress: analyticsEvents.ipAddress,
             referrer: analyticsEvents.referrer,
-            url: analyticsEvents.url,
+            url: sql<string>`(${analyticsEvents.metadata}->>'url')`,
             createdAt: analyticsEvents.createdAt,
             user: {
               id: users.id,
@@ -104,7 +113,7 @@ export async function getAnalyticsEventById(id: string) {
           userAgent: analyticsEvents.userAgent,
           ipAddress: analyticsEvents.ipAddress,
           referrer: analyticsEvents.referrer,
-          url: analyticsEvents.url,
+          url: sql<string>`(${analyticsEvents.metadata}->>'url')`,
           createdAt: analyticsEvents.createdAt,
           user: {
             id: users.id,
@@ -176,7 +185,7 @@ export async function getAnalyticsOverview(days: number = 30) {
         // Top pages
         db
           .select({
-            url: analyticsEvents.url,
+            url: sql<string>`(${analyticsEvents.metadata}->>'url')`,
             count: count(),
           })
           .from(analyticsEvents)
@@ -184,7 +193,7 @@ export async function getAnalyticsOverview(days: number = 30) {
             gte(analyticsEvents.createdAt, startDate),
             eq(analyticsEvents.eventType, "page_view")
           ))
-          .groupBy(analyticsEvents.url)
+          .groupBy(sql`(${analyticsEvents.metadata}->>'url')`)
           .orderBy(desc(count()))
           .limit(10),
         
@@ -236,7 +245,7 @@ export async function getAnalyticsForExport(dateFrom?: string, dateTo?: string) 
           eventType: analyticsEvents.eventType,
           userId: analyticsEvents.userId,
           sessionId: analyticsEvents.sessionId,
-          url: analyticsEvents.url,
+          url: sql<string>`(${analyticsEvents.metadata}->>'url')`,
           referrer: analyticsEvents.referrer,
           userAgent: analyticsEvents.userAgent,
           ipAddress: analyticsEvents.ipAddress,
@@ -249,7 +258,9 @@ export async function getAnalyticsForExport(dateFrom?: string, dateTo?: string) 
         .where(whereClause)
         .orderBy(desc(analyticsEvents.createdAt))
     },
-    [`analytics-export-${dateFrom}-${dateTo}`],
+    [
+      `analytics-export-${dateFrom ?? ""}-${dateTo ?? ""}`
+    ],
     {
       revalidate: 300,
       tags: ["analytics"],

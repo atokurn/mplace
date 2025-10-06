@@ -1,4 +1,4 @@
-import { SQL, and, or, eq, ne, ilike, notIlike, isNull, isNotNull, gte, lte, gt, lt } from 'drizzle-orm';
+import { and, eq, gte, gt, ilike, inArray, isNotNull, isNull, lte, lt, ne, notIlike, or, type SQL } from 'drizzle-orm';
 import { PgColumn } from 'drizzle-orm/pg-core';
 
 export interface DataTableFilterField<TData> {
@@ -40,7 +40,7 @@ export interface DataTableFilterOption<TData> {
  * @param operator - The filter operator.
  * @returns The filtered columns.
  */
-export function filterColumns<T extends Record<string, any>>(
+export function filterColumns<T extends Record<string, unknown>>(
   columns: T[],
   filterValues: string[],
   operator: 'and' | 'or' = 'and'
@@ -71,12 +71,16 @@ export function filterColumns<T extends Record<string, any>>(
  * @param operator - The operator to use when combining filters.
  * @returns The SQL where clause.
  */
+type Primitive = string | number | boolean | null;
+type FilterOperator = 'eq' | 'ne' | 'ilike' | 'notIlike' | 'isNull' | 'isNotNull' | 'gte' | 'lte' | 'gt' | 'lt' | 'in';
+interface BuiltFilter<TColumn extends PgColumn = PgColumn, TValue extends Primitive | Primitive[] = Primitive | Primitive[]> {
+  column: TColumn;
+  value: TValue;
+  operator?: FilterOperator;
+}
+
 export function buildFilterWhere(
-  filters: Array<{
-    column: PgColumn;
-    value: any;
-    operator?: 'eq' | 'ne' | 'ilike' | 'notIlike' | 'isNull' | 'isNotNull' | 'gte' | 'lte' | 'gt' | 'lt';
-  }>,
+  filters: Array<BuiltFilter>,
   operator: 'and' | 'or' = 'and'
 ): SQL | undefined {
   if (!filters.length) return undefined;
@@ -84,27 +88,29 @@ export function buildFilterWhere(
   const conditions = filters.map(({ column, value, operator: filterOperator = 'eq' }) => {
     switch (filterOperator) {
       case 'eq':
-        return eq(column, value);
+        return eq(column, value as Primitive);
       case 'ne':
-        return ne(column, value);
+        return ne(column, value as Primitive);
       case 'ilike':
-        return ilike(column, `%${value}%`);
+        return ilike(column, `%${String(value)}%`);
       case 'notIlike':
-        return notIlike(column, `%${value}%`);
+        return notIlike(column, `%${String(value)}%`);
       case 'isNull':
         return isNull(column);
       case 'isNotNull':
         return isNotNull(column);
       case 'gte':
-        return gte(column, value);
+        return gte(column, value as Primitive);
       case 'lte':
-        return lte(column, value);
+        return lte(column, value as Primitive);
       case 'gt':
-        return gt(column, value);
+        return gt(column, value as Primitive);
       case 'lt':
-        return lt(column, value);
+        return lt(column, value as Primitive);
+      case 'in':
+        return inArray(column, value as Primitive[]);
       default:
-        return eq(column, value);
+        return eq(column, value as Primitive);
     }
   });
 

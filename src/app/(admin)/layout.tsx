@@ -8,6 +8,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Sun, Moon } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -15,10 +16,26 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  const pathname = usePathname();
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
+
+  // Hide sidebar and header for /products/add route
+  const hideChrome = pathname === "/products/add";
+  if (hideChrome) {
+    return (
+      <div className="min-h-screen">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -45,8 +62,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
+              aria-label="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {mounted ? (
+                theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )
+              ) : (
+                // Placeholder to avoid layout shift before hydration
+                <span style={{ display: 'inline-block', width: 16, height: 16 }} />
+              )}
             </Button>
           </div>
         </header>

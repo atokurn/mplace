@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const searchParamsSchemaUsers = usersSearchParamsCache
 
-export type GetUsersSchema = z.infer<typeof searchParamsSchemaUsers>
+export type GetUsersSchema = Awaited<ReturnType<typeof usersSearchParamsCache.parse>>
 
 export const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),

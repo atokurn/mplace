@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { users, products, reviews, downloads } from '@/lib/db/schema';
+import { users, products, reviews } from '@/lib/db/schema';
 import { eq, desc, count, and, sql } from 'drizzle-orm';
 import type { User, Product, Review, NewUser, NewProduct, NewReview } from '@/lib/db/schema';
 
@@ -99,22 +99,14 @@ export const productService = {
       .where(eq(products.id, id));
   },
 
-  async incrementDownloadCount(id: string): Promise<void> {
-    await db
-      .update(products)
-      .set({ 
-        downloadCount: sql`${products.downloadCount} + 1`,
-        updatedAt: new Date()
-      })
-      .where(eq(products.id, id));
-  },
+  // incrementDownloadCount removed: download feature deprecated
 
   async getPopular(limit = 10) {
     return await db
       .select()
       .from(products)
       .where(eq(products.isActive, true))
-      .orderBy(desc(products.downloadCount))
+      .orderBy(desc(products.viewCount))
       .limit(limit);
   },
 
@@ -185,51 +177,7 @@ export const reviewService = {
   },
 };
 
-// Download services
-export const downloadService = {
-  async recordDownload(productId: string, userId: string) {
-    await db.insert(downloads).values({
-      productId,
-      userId,
-    });
-    
-    // Increment download count
-    await productService.incrementDownloadCount(productId);
-  },
-
-  async getUserDownloads(userId: string, limit = 20, offset = 0) {
-    return await db
-      .select({
-        id: downloads.id,
-        downloadedAt: downloads.downloadedAt,
-        product: {
-          id: products.id,
-          title: products.title,
-          imageUrl: products.imageUrl,
-          fileUrl: products.fileUrl,
-        },
-      })
-      .from(downloads)
-      .leftJoin(products, eq(downloads.productId, products.id))
-      .where(eq(downloads.userId, userId))
-      .orderBy(desc(downloads.downloadedAt))
-      .limit(limit)
-      .offset(offset);
-  },
-
-  async hasUserDownloaded(productId: string, userId: string): Promise<boolean> {
-    const result = await db
-      .select({ id: downloads.id })
-      .from(downloads)
-      .where(and(
-        eq(downloads.productId, productId),
-        eq(downloads.userId, userId)
-      ))
-      .limit(1);
-    
-    return result.length > 0;
-  },
-};
+// Download services removed: the platform no longer supports digital downloads.
 
 // Analytics services
 export const analyticsService = {
@@ -243,10 +191,6 @@ export const analyticsService = {
       .select({ count: count() })
       .from(users);
 
-    const [totalDownloads] = await db
-      .select({ count: count() })
-      .from(downloads);
-
     const [totalReviews] = await db
       .select({ count: count() })
       .from(reviews);
@@ -254,7 +198,6 @@ export const analyticsService = {
     return {
       totalProducts: totalProducts.count,
       totalUsers: totalUsers.count,
-      totalDownloads: totalDownloads.count,
       totalReviews: totalReviews.count,
     };
   },

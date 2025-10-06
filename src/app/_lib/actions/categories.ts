@@ -1,118 +1,135 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { categories, type SelectCategory } from "@/lib/db/schema";
-import { takeFirstOrThrow } from "@/lib/db/utils";
-import { asc, eq, inArray, not } from "drizzle-orm";
-import { customAlphabet } from "nanoid";
+import { categories, type SelectCategory, products } from "@/lib/db/schema";
+import { takeFirstFromReturning } from "@/lib/db/utils";
+import { eq, inArray, count } from "drizzle-orm";
 import { revalidateTag, unstable_noStore } from "next/cache";
+// Removed z import and local types to avoid duplicate zod type issues
 
 import { getErrorMessage } from "@/lib/handle-error";
 
-import type { CreateCategorySchema, UpdateCategorySchema } from "./validations";
+import { createCategorySchema, updateCategorySchema } from "../validations/categories";
+// NOTE: Avoid importing inferred Zod TS types here due to cross-bundle typing issues.
 
-function generateSlug(name: string): string {
+// Local TS-only types to avoid cross-module zod type inference issues
+// Keep in sync with ../validations/categories.ts
+ type CategoryCreateInput = {
+   name: string;
+   slug?: string;
+   description?: string;
+   imageUrl?: string | "";
+   parentId?: string | null;
+   isActive?: boolean;
+   sortOrder?: number;
+ };
+ 
+ function generateSlug(name: string): string {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 }
 
-export async function createCategory(input: CreateCategorySchema) {
+export async function createCategory(input: unknown) {
   unstable_noStore();
   try {
+    const data = createCategorySchema.parse(input) as CategoryCreateInput;
     // Generate slug from name if not provided
-    let slug = input.slug;
-    if (!slug) {
-      slug = input.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-    }
-
-    // Check if slug already exists
-    const existingCategory = await db
-      .select()
-      .from(categories)
-      .where(eq(categories.slug, slug))
-      .limit(1);
-
-    if (existingCategory.length > 0) {
-      return {
-        data: null,
-        error: "A category with this slug already exists",
-      };
-    }
-    
-    const newCategory = await db
-      .insert(categories)
-      .values({
-        ...input,
-        slug,
-      })
-      .returning({
-        id: categories.id,
-        name: categories.name,
-      })
-      .then(takeFirstOrThrow);
-
-    revalidateTag("categories");
-    revalidateTag("category-counts");
-
-    return {
-      data: newCategory,
-      error: null,
-    };
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
-
-export async function updateCategory(input: UpdateCategorySchema & { id: string }) {
+    const providedSlug = data.slug;
+    const slug = providedSlug && providedSlug.trim().length > 0
+      ? providedSlug
+      : generateSlug(data.name);
+ 
+     const newCategory = await db
+       .insert(categories)
+       .values({
+         name: data.name,
+         slug,
+         description: data.description ?? null,
+         imageUrl: (data.imageUrl ?? "") === "" ? null : (data.imageUrl as string),
+         parentId: data.parentId ?? null,
+         isActive: data.isActive ?? true,
+         sortOrder: data.sortOrder ?? 0,
+       })
+       .returning()
+       .then((res) => takeFirstFromReturning(res));
+     
+     revalidateTag("categories");
+ 
+     return {
+       data: newCategory,
+       error: null as string | null,
+     } as const;
+   } catch (error) {
+     return {
+       data: null,
+       error: getErrorMessage(error),
+     } as const;
+   }
+ }
+ 
+export async function updateCategory(input: { id: string } & Record<string, unknown>) {
   unstable_noStore();
   try {
-    const updateData: Partial<SelectCategory> = {};
-    
-    if (input.name !== undefined) {
-      updateData.name = input.name;
-      updateData.slug = generateSlug(input.name);
-    }
-    if (input.description !== undefined) updateData.description = input.description;
-    if (input.imageUrl !== undefined) updateData.imageUrl = input.imageUrl;
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
-    if (input.sortOrder !== undefined) updateData.sortOrder = input.sortOrder;
-    
-    updateData.updatedAt = new Date();
+    const { id, ...updateInput } = input;
+    const parsedData = updateCategorySchema.parse(updateInput) as Record<string, unknown>;
+ 
+     let updateData: Partial<SelectCategory> = {};
+ 
+     if (typeof parsedData['name'] === 'string') {
+       updateData = { ...updateData, name: parsedData['name'] as string };
+       // If name is updated and no slug explicitly provided, regenerate slug from new name
+       if (!parsedData['slug']) {
+         updateData = { ...updateData, slug: generateSlug(parsedData['name'] as string) };
+       }
+     }
+ 
+     if (typeof parsedData['slug'] === 'string') {
+       updateData = { ...updateData, slug: parsedData['slug'] as string };
+     }
+ 
+     if (typeof parsedData['description'] !== 'undefined') {
+       updateData = { ...updateData, description: (parsedData['description'] as string) ?? null };
+     }
 
-    const data = await db
-      .update(categories)
-      .set(updateData)
-      .where(eq(categories.id, input.id))
-      .returning({
-        id: categories.id,
-        name: categories.name,
-      })
-      .then(takeFirstOrThrow);
+     if (typeof parsedData['imageUrl'] !== 'undefined') {
+       const val = parsedData['imageUrl'] as string | null | undefined;
+       updateData = { ...updateData, imageUrl: !val || val === '' ? null : val };
+     }
 
-    revalidateTag("categories");
-    revalidateTag("category-counts");
-
-    return {
-      data,
-      error: null,
-    };
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
-}
+     if (typeof parsedData['parentId'] !== 'undefined') {
+       updateData = { ...updateData, parentId: (parsedData['parentId'] as string | null) ?? null };
+     }
+ 
+     if (typeof parsedData['isActive'] === 'boolean') {
+       updateData = { ...updateData, isActive: parsedData['isActive'] as boolean };
+     }
+ 
+     if (typeof parsedData['sortOrder'] === 'number') {
+       updateData = { ...updateData, sortOrder: parsedData['sortOrder'] as number };
+     }
+ 
+     const updated = await db
+       .update(categories)
+       .set(updateData)
+       .where(eq(categories.id, id))
+       .returning()
+       .then((res) => takeFirstFromReturning(res));
+     
+     revalidateTag("categories");
+ 
+     return {
+       data: updated ?? null,
+       error: null as string | null,
+     } as const;
+   } catch (error) {
+     return {
+       data: null,
+       error: getErrorMessage(error),
+     } as const;
+   }
+ }
 
 export async function updateCategories(input: {
   ids: string[];
@@ -121,69 +138,74 @@ export async function updateCategories(input: {
 }) {
   unstable_noStore();
   try {
-    const updateData: Partial<SelectCategory> = {
-      updatedAt: new Date(),
-    };
-    
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
-    if (input.sortOrder !== undefined) updateData.sortOrder = input.sortOrder;
+    let updateData: Partial<SelectCategory> = {};
 
-    await db
+    if (typeof input.isActive === "boolean") {
+      updateData = { ...updateData, isActive: input.isActive };
+    }
+
+    if (typeof input.sortOrder === "number") {
+      updateData = { ...updateData, sortOrder: input.sortOrder };
+    }
+
+    const updated = await db
       .update(categories)
       .set(updateData)
-      .where(inArray(categories.id, input.ids));
+      .where(inArray(categories.id, input.ids))
+      .returning();
 
     revalidateTag("categories");
-    revalidateTag("category-counts");
 
     return {
-      data: null,
-      error: null,
-    };
-  } catch (err) {
+      data: updated,
+      error: null as string | null,
+    } as const;
+  } catch (error) {
     return {
       data: null,
-      error: getErrorMessage(err),
-    };
+      error: getErrorMessage(error),
+    } as const;
   }
 }
 
+import { deleteMultiple, deleteSingle } from "@/lib/actions";
+
 export async function deleteCategory(input: { id: string }) {
-  unstable_noStore();
-  try {
-    await db.delete(categories).where(eq(categories.id, input.id));
-
-    revalidateTag("categories");
-    revalidateTag("category-counts");
-
-    return {
-      data: null,
-      error: null,
-    };
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
+  return deleteSingle({
+    table: categories,
+    id: input.id,
+    revalidateTagName: "categories",
+    preDelete: async (id: string) => {
+      const res = await db
+        .select({ count: count() })
+        .from(products)
+        .where(eq(products.categoryId, id));
+      const usedCount = res[0]?.count ?? 0;
+      if (usedCount > 0) {
+        throw new Error(
+          "Kategori tidak dapat dihapus karena masih ada produk yang menggunakan kategori ini. Pindahkan produk ke kategori lain terlebih dahulu."
+        );
+      }
+    },
+  });
 }
 
 export async function deleteCategories(input: { ids: string[] }) {
-  unstable_noStore();
-  try {
-    await db.delete(categories).where(inArray(categories.id, input.ids));
-
-    revalidateTag("categories");
-    revalidateTag("category-counts");
-
-    return {
-      data: null,
-      error: null,
-    };
-  } catch (err) {
-    return {
-      data: null,
-      error: getErrorMessage(err),
-    };
-  }
+  return deleteMultiple({
+    table: categories,
+    ids: input.ids,
+    revalidateTagName: "categories",
+    preDelete: async (ids: string[]) => {
+      const res = await db
+        .select({ count: count() })
+        .from(products)
+        .where(inArray(products.categoryId, ids));
+      const usedCount = res[0]?.count ?? 0;
+      if (usedCount > 0) {
+        throw new Error(
+          "Beberapa kategori tidak dapat dihapus karena masih digunakan oleh produk. Pindahkan produk ke kategori lain terlebih dahulu."
+        );
+      }
+    },
+  });
 }

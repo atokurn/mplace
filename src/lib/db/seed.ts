@@ -61,7 +61,7 @@ async function seed() {
       },
     ];
 
-    const createdCategories = await db.insert(categories).values(categoryData).returning();
+    const createdCategories = await db.insert(categories).values(categoryData).returning({ id: categories.id });
     console.log('✅ Categories created:', createdCategories.length);
 
     // Create sample products
@@ -74,10 +74,6 @@ async function seed() {
         category: 'Templates',
         tags: ['ui', 'kit', 'modern', 'web'],
         imageUrl: '/images/products/ui-kit.jpg',
-        fileUrl: '/files/ui-kit.zip',
-        fileName: 'modern-ui-kit.zip',
-        fileSize: 15728640, // 15MB
-        downloadCount: 0,
         isActive: true,
         createdBy: adminUser.id,
       },
@@ -89,16 +85,12 @@ async function seed() {
         category: 'Icons',
         tags: ['icons', 'minimalist', 'clean', 'vector'],
         imageUrl: '/images/products/icon-pack.jpg',
-        fileUrl: '/files/icon-pack.zip',
-        fileName: 'minimalist-icons.zip',
-        fileSize: 5242880, // 5MB
-        downloadCount: 0,
         isActive: true,
         createdBy: adminUser.id,
       },
     ];
 
-    const createdProducts = await db.insert(products).values(productData).returning();
+    const createdProducts = await db.insert(products).values(productData).returning({ id: products.id });
     console.log('✅ Sample products created:', createdProducts.length);
 
     // Create default settings

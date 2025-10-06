@@ -130,8 +130,8 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Have a question, suggestion, or just want to say hello? We'd love to hear from you. 
-            Get in touch with our team and we'll get back to you as soon as possible.
+            Have a question, suggestion, or just want to say hello? We&apos;d love to hear from you. 
+            Get in touch with our team and we&apos;ll get back to you as soon as possible.
           </motion.p>
         </div>
       </section>
@@ -150,7 +150,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
               GET IN TOUCH
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Choose the best way to reach us. We're here to help!
+              Choose the best way to reach us. We&apos;re here to help!
             </p>
           </motion.div>
 
@@ -200,7 +200,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
               SEND US A MESSAGE
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Fill out the form below and we'll get back to you within 24 hours.
+              Fill out the form below and we&apos;ll get back to you within 24 hours.
             </p>
           </motion.div>
 
@@ -218,7 +218,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <p className="text-green-600 text-center font-medium">
-                  Message sent successfully! We'll get back to you soon.
+                  Message sent successfully! We&apos;ll get back to you soon.
                 </p>
               </motion.div>
             )}
@@ -297,7 +297,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
                   onChange={onInputChange}
                   required
                   className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all duration-300"
-                  placeholder="What's this about?"
+                  placeholder="What&apos;s this about?"
                 />
               </motion.div>
               
@@ -368,7 +368,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
               FREQUENTLY ASKED QUESTIONS
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Quick answers to common questions. Can't find what you're looking for? Send us a message!
+              Quick answers to common questions. Can&apos;t find what you&apos;re looking for? Send us a message!
             </p>
           </motion.div>
 
@@ -382,7 +382,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
             {[
               {
                 question: "How do I purchase digital assets?",
-                answer: "Simply browse our catalog, select the assets you want, and proceed to checkout. You'll receive download links immediately after payment."
+                answer: "Simply browse our catalog, select the assets you want, and proceed to checkout. You&apos;ll receive download links immediately after payment."
               },
               {
                 question: "What file formats do you offer?",
@@ -394,7 +394,7 @@ export function ContactClient({ contactInfo }: ContactClientProps) {
               },
               {
                 question: "Do you offer refunds?",
-                answer: "We offer refunds within 30 days of purchase if the asset doesn't meet your expectations or has technical issues."
+                answer: "We offer refunds within 30 days of purchase if the asset doesn&apos;t meet your expectations or has technical issues.",
               }
             ].map((faq, index) => (
               <motion.div

@@ -3,7 +3,6 @@
 import type { Column, ColumnMeta, Table } from "@tanstack/react-table";
 import {
   CalendarIcon,
-  Check,
   ChevronsUpDown,
   GripVertical,
   ListFilter,
@@ -338,7 +337,7 @@ interface DataTableFilterItemProps<TData> {
   onFilterRemove: (filterId: string) => void;
 }
 
-function DataTableFilterItem<TData>({
+export function DataTableFilterItem<TData>({
   filter,
   index,
   filterItemId,
@@ -353,14 +352,13 @@ function DataTableFilterItem<TData>({
   const [showValueSelector, setShowValueSelector] = React.useState(false);
 
   const column = columns.find((column) => column.id === filter.id);
-  if (!column) return null;
+  const columnMeta = column?.columnDef.meta;
 
   const joinOperatorListboxId = `${filterItemId}-join-operator-listbox`;
   const fieldListboxId = `${filterItemId}-field-listbox`;
   const operatorListboxId = `${filterItemId}-operator-listbox`;
   const inputId = `${filterItemId}-input`;
 
-  const columnMeta = column.columnDef.meta;
   const filterOperators = getFilterOperators(filter.variant);
 
   const onItemKeyDown = React.useCallback(
@@ -478,12 +476,6 @@ function DataTableFilterItem<TData>({
                       <span className="truncate">
                         {column.columnDef.meta?.label}
                       </span>
-                      <Check
-                        className={cn(
-                          "ml-auto",
-                          column.id === filter.id ? "opacity-100" : "opacity-0",
-                        )}
-                      />
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -569,7 +561,7 @@ function onFilterInputRender<TData>({
 }: {
   filter: ExtendedColumnFilter<TData>;
   inputId: string;
-  column: Column<TData>;
+  column: Column<TData> | undefined;
   columnMeta?: ColumnMeta<TData, unknown>;
   onFilterUpdate: (
     filterId: string,
@@ -578,6 +570,9 @@ function onFilterInputRender<TData>({
   showValueSelector: boolean;
   setShowValueSelector: (value: boolean) => void;
 }) {
+  if (!column) {
+    return null;
+  }
   if (filter.operator === "isEmpty" || filter.operator === "isNotEmpty") {
     return (
       <div

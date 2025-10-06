@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { ZodTypeAny } from "zod";
 import { toast } from "sonner";
 
 import { Shell } from "@/app/_components/shared/layouts/shell";
@@ -21,73 +22,31 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import { createCategorySchema, type CreateCategorySchema } from "@/app/_lib/validations/categories";
-import { z } from 'zod'; // Import z
+
+import { createCategorySchema, type CreateCategorySchema } from "@/app/_lib/validations/categories";
 import { createCategory } from "@/app/_lib/actions/categories";
-import { getAllCategories } from "@/app/_lib/queries/categories";
-import { FileUpload } from "@/components/ui/file-upload";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AddCategoryPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
-  const [parentCategories, setParentCategories] = React.useState<Array<{id: string, name: string}>>([]);
 
-  const form = useForm<any>({ // Changed type to any for debugging with simplified schema
-    resolver: zodResolver(z.object({ name: z.string().min(1, "Name is required"), slug: z.string().optional(), description: z.string().optional(), imageUrl: z.string().optional(), parentId: z.string().nullable().optional(), isActive: z.boolean().optional(), sortOrder: z.number().optional() }) ), // Simplified schema for debugging
+  const form = useForm<CreateCategorySchema>({
+    resolver: zodResolver(createCategorySchema as unknown as ZodTypeAny),
     defaultValues: {
       name: "",
       slug: "",
       description: "",
       imageUrl: "",
-      parentId: null,
+      // parentId is optional in schema; omit by default
       isActive: true,
       sortOrder: 0,
     },
   });
 
-  // Load parent categories
-  React.useEffect(() => {
-    const loadParentCategories = async () => {
-      try {
-        const categories = await getAllCategories();
-        setParentCategories(categories);
-      } catch (error) {
-        console.error('Failed to load parent categories:', error);
-      }
-    };
-    loadParentCategories();
-  }, []);
-
-  // Auto-generate slug from name
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
-      .trim();
-  };
-
-  // Watch name field to auto-generate slug
-  const watchedName = form.watch("name");
-  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = React.useState(false);
-  
-  React.useEffect(() => {
-    if (watchedName && !isSlugManuallyEdited) {
-      const generatedSlug = generateSlug(watchedName);
-      if (generatedSlug) {
-        form.setValue("slug", generatedSlug);
-      }
-    }
-  }, [watchedName, form, isSlugManuallyEdited]);
-
-  async function onSubmit(data: any) { // Changed type to any for debugging with simplified schema
+  async function onSubmit(data: CreateCategorySchema) {
     setIsLoading(true);
     try {
       const result = await createCategory(data);
-      
       if (result.data && !result.error) {
         toast.success("Category created successfully");
         router.push("/categories");
@@ -97,6 +56,7 @@ export default function AddCategoryPage() {
       }
     } catch (error) {
       toast.error("An unexpected error occurred");
+      // eslint-disable-next-line no-console
       console.error("Error creating category:", error);
     } finally {
       setIsLoading(false);
@@ -109,24 +69,13 @@ export default function AddCategoryPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Add Category</h1>
-            <p className="text-muted-foreground">
-              Create a new category to organize your products
-            </p>
+            <p className="text-muted-foreground">Create a new product category</p>
           </div>
           <div className="flex gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={isLoading}
-            >
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              onClick={form.handleSubmit(onSubmit)}
-            >
+            <Button type="submit" disabled={isLoading} onClick={form.handleSubmit(onSubmit)}>
               {isLoading ? "Creating..." : "Create Category"}
             </Button>
           </div>
@@ -148,9 +97,7 @@ export default function AddCategoryPage() {
                       <FormControl>
                         <Input placeholder="Enter category name" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        The name of the category (1-100 characters)
-                      </FormDescription>
+                      <FormDescription>The name of the category (1-100 characters)</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -163,19 +110,10 @@ export default function AddCategoryPage() {
                     <FormItem>
                       <FormLabel>Slug</FormLabel>
                       <FormControl>
-                        <Input 
-                           placeholder="category-slug" 
-                           {...field}
-                           onChange={(e) => {
-                             const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
-                             field.onChange(value);
-                             setIsSlugManuallyEdited(true);
-                           }}
-                           onFocus={() => setIsSlugManuallyEdited(true)}
-                        />
+                        <Input placeholder="e.g. breakfast-foods" {...field} />
                       </FormControl>
                       <FormDescription>
-                        URL-friendly version of the name. Auto-generated from name if left empty.
+                        Optional URL-friendly identifier. If left blank, it will be generated from the name.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -189,48 +127,9 @@ export default function AddCategoryPage() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Enter category description"
-                          className="min-h-[100px]"
-                          {...field}
-                        />
+                        <Textarea placeholder="Enter category description" className="min-h-[100px]" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        Optional description for the category (max 500 characters)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="parentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parent Category</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value || "none"}
-                          onValueChange={(value) => field.onChange(value === "none" ? null : value)}
-                          disabled={isLoading}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select parent category (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No parent category</SelectItem>
-                            {parentCategories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        Optional parent category for hierarchical organization
-                      </FormDescription>
+                      <FormDescription>Optional description (max 500 characters)</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -241,19 +140,12 @@ export default function AddCategoryPage() {
                   name="imageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category Image</FormLabel>
+                      <FormLabel>Image URL</FormLabel>
                       <FormControl>
-                        <FileUpload
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          accept="image/*"
-                          maxSize={2}
-                          disabled={isLoading}
-                        />
+                        {/* Use text input to allow absolute URLs or project-relative paths per schema */}
+                        <Input type="text" placeholder="https://example.com/image.jpg or /uploads/sample.svg" {...field} />
                       </FormControl>
-                      <FormDescription>
-                        Upload an image for the category (max 2MB)
-                      </FormDescription>
+                      <FormDescription>Optional image URL or project-relative path</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -274,9 +166,7 @@ export default function AddCategoryPage() {
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Order in which the category appears (0 = first)
-                      </FormDescription>
+                      <FormDescription>Determines the order in which categories are displayed</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -288,22 +178,15 @@ export default function AddCategoryPage() {
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">Active</FormLabel>
-                        <FormDescription>
-                          Whether this category is active and visible to users
-                        </FormDescription>
+                        <FormLabel className="text-base">Status</FormLabel>
+                        <FormDescription>Whether the category is active and visible</FormDescription>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
                 />
-
-
               </form>
             </Form>
           </CardContent>

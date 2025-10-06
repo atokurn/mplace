@@ -36,6 +36,20 @@
       "when": 1749466007892,
       "tag": "0004_chief_tana_nile",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1758198763261,
+      "tag": "0005_dizzy_snowbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1758940199568,
+      "tag": "0006_dear_veda",
+      "breakpoints": true
     }
   ]
 }

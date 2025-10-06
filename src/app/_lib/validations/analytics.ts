@@ -3,10 +3,19 @@ import { z } from "zod"
 
 export const searchParamsSchemaAnalytics = analyticsSearchParamsCache
 
-export type GetAnalyticsSchema = z.infer<typeof searchParamsSchemaAnalytics>
+export type GetAnalyticsSchema = {
+  page: number
+  per_page: number
+  sort: string
+  eventType: ("page_view" | "product_view" | "add_to_cart" | "purchase" | "search")[]
+  userId: string
+  dateFrom: string
+  dateTo: string
+  operator: "and" | "or"
+}
 
 export const createAnalyticsEventSchema = z.object({
-  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search", "download"]),
+  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search"]),
   userId: z.string().optional(),
   sessionId: z.string(),
   metadata: z.record(z.any()).optional(),
@@ -17,7 +26,7 @@ export const createAnalyticsEventSchema = z.object({
 })
 
 export const updateAnalyticsEventSchema = z.object({
-  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search", "download"]).optional(),
+  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search"]).optional(),
   metadata: z.record(z.any()).optional(),
 })
 

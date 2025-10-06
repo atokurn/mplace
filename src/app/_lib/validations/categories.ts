@@ -1,4 +1,3 @@
-import { insertCategorySchema } from "@/lib/db/schema";
 import { z } from "zod";
 
 // Search params type for categories
@@ -11,26 +10,27 @@ export type GetCategoriesSchema = {
   description?: string;
   filters?: Array<{
     id: string;
-    value: any;
+    value: unknown;
     operator?: string;
   }>;
   joinOperator?: 'and' | 'or';
   filterFlag?: string;
 };
 
-export const createCategorySchema = insertCategorySchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
+export const createCategorySchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
   slug: z.string().max(100, "Slug must be less than 100 characters").regex(/^[a-z0-9-]*$/, "Slug must contain only lowercase letters, numbers, and hyphens").optional(),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
-  imageUrl: z.string().url("Invalid image URL").optional().or(z.literal("")),
+  // Allow absolute URLs (http/https) or project-relative paths like /uploads/..., /images/..., /static/...
+  imageUrl: z.union([
+    z.string().url("Invalid image URL"),
+    z.string().regex(/^\/(uploads|images|static)\/.+$/, "Invalid image URL"),
+    z.literal("")
+  ]).optional(),
   parentId: z.string().uuid("Invalid parent category ID").optional().nullable(),
   isActive: z.boolean().optional().default(true),
   sortOrder: z.number().int().min(0).optional().default(0),
-});
+})
 
 export type CreateCategorySchema = z.infer<typeof createCategorySchema>;
 

@@ -1,6 +1,6 @@
-import { pgTable, text, timestamp, uuid, decimal, integer, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, decimal, integer, boolean, jsonb, foreignKey } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 // Users table
 export const users = pgTable('users', {
@@ -22,7 +22,6 @@ export const products = pgTable('products', {
   shortDescription: text('short_description'), // Brief product summary
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   originalPrice: decimal('original_price', { precision: 10, scale: 2 }), // For discount display
-  commercialPrice: decimal('commercial_price', { precision: 10, scale: 2 }), // Commercial license price
   categoryId: uuid('category_id').references(() => categories.id),
   category: text('category').notNull(), // Keep for backward compatibility
   tags: jsonb('tags').$type<string[]>().default([]),
@@ -32,18 +31,17 @@ export const products = pgTable('products', {
   thumbnailUrl: text('thumbnail_url'), // Optimized thumbnail
   previewImages: jsonb('preview_images').$type<string[]>().default([]), // Additional preview images
   
-  // File information
-  fileUrl: text('file_url').notNull(),
-  fileName: text('file_name').notNull(),
-  fileSize: integer('file_size').notNull(),
-  fileFormat: text('file_format').notNull().default('unknown'), // e.g., 'svg', 'png', 'ai', 'psd'
-  fileType: text('file_type').notNull().default('digital'), // 'digital', 'template', 'font', 'vector'
-  
-  // Product specifications
-  dimensions: text('dimensions'), // e.g., '1920x1080', 'A4', 'Vector'
-  resolution: text('resolution'), // e.g., '300 DPI', 'Vector', '4K'
-  colorMode: text('color_mode'), // e.g., 'RGB', 'CMYK', 'Grayscale'
-  software: jsonb('software').$type<string[]>().default([]), // Compatible software
+
+  // Physical product fields
+  isPhysical: boolean('is_physical').default(true).notNull(),
+  requiresShipping: boolean('requires_shipping').default(true).notNull(),
+  weightGrams: integer('weight_grams'), // in grams
+  lengthCm: decimal('length_cm', { precision: 10, scale: 2 }),
+  widthCm: decimal('width_cm', { precision: 10, scale: 2 }),
+  heightCm: decimal('height_cm', { precision: 10, scale: 2 }),
+  brand: text('brand'),
+  barcode: text('barcode'),
+  material: text('material'),
   
   // SEO and marketing
   slug: text('slug').notNull().unique().default(''),
@@ -52,7 +50,6 @@ export const products = pgTable('products', {
   keywords: jsonb('keywords').$type<string[]>().default([]),
   
   // Statistics and status
-  downloadCount: integer('download_count').default(0).notNull(),
   viewCount: integer('view_count').default(0).notNull(),
   likeCount: integer('like_count').default(0).notNull(),
   rating: decimal('rating', { precision: 3, scale: 2 }).default('0.00'), // Average rating
@@ -63,10 +60,6 @@ export const products = pgTable('products', {
   isFeatured: boolean('is_featured').default(false).notNull(),
   isNew: boolean('is_new').default(true).notNull(),
   isBestseller: boolean('is_bestseller').default(false).notNull(),
-  
-  // Licensing and usage
-  licenseType: text('license_type').notNull().default('standard'), // 'standard', 'extended', 'commercial'
-  usageRights: jsonb('usage_rights').$type<string[]>().default([]), // Usage permissions
   
   // Timestamps
   createdBy: uuid('created_by').references(() => users.id).notNull(),
@@ -86,13 +79,7 @@ export const reviews = pgTable('reviews', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-// Downloads table (track user downloads)
-export const downloads = pgTable('downloads', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  userId: uuid('user_id').references(() => users.id).notNull(),
-  downloadedAt: timestamp('downloaded_at').defaultNow().notNull(),
-});
+
 
 // Categories table
 export const categories = pgTable('categories', {
@@ -101,12 +88,17 @@ export const categories = pgTable('categories', {
   description: text('description'),
   slug: text('slug').notNull().unique().default(''),
   imageUrl: text('image_url'),
-  parentId: uuid('parent_id').references(() => categories.id),
+  parentId: uuid('parent_id'),
   isActive: boolean('is_active').default(true).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (t) => [
+  foreignKey({
+    columns: [t.parentId],
+    foreignColumns: [t.id],
+  }).onDelete('set null'),
+]);
 
 // Orders table
 export const orders = pgTable('orders', {
@@ -170,7 +162,7 @@ export const promotionUsage = pgTable('promotion_usage', {
 // Analytics Events table (for tracking user behavior)
 export const analyticsEvents = pgTable('analytics_events', {
   id: uuid('id').defaultRandom().primaryKey(),
-  eventType: text('event_type').notNull(), // 'page_view' | 'product_view' | 'download' | 'purchase' | 'search'
+  eventType: text('event_type').notNull(), // 'page_view' | 'product_view' | 'add_to_cart' | 'purchase' | 'search'
   userId: uuid('user_id').references(() => users.id), // null for anonymous users
   sessionId: text('session_id'),
   productId: uuid('product_id').references(() => products.id), // for product-related events
@@ -217,18 +209,17 @@ export const insertProductSchema = createInsertSchema(products, {
   imageUrl: z.string().url('Invalid image URL'),
   thumbnailUrl: z.string().url('Invalid thumbnail URL').optional(),
   previewImages: z.array(z.string().url()).default([]),
-  
-  // File validation
-  fileName: z.string().min(1, 'File name is required'),
-  fileSize: z.number().min(1, 'File size must be greater than 0'),
-  fileFormat: z.string().min(1, 'File format is required'),
-  fileType: z.enum(['digital', 'template', 'font', 'vector']).default('digital'),
-  
-  // Product specifications
-  dimensions: z.string().optional(),
-  resolution: z.string().optional(),
-  colorMode: z.string().optional(),
-  software: z.array(z.string()).default([]),
+
+  // Physical product validation
+  isPhysical: z.boolean().default(true),
+  requiresShipping: z.boolean().default(true),
+  weightGrams: z.number().int().positive('Weight must be a positive integer').optional(),
+  lengthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid length').optional(),
+  widthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid width').optional(),
+  heightCm: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid height').optional(),
+  brand: z.string().max(100).optional(),
+  barcode: z.string().max(64).optional(),
+  material: z.string().max(100).optional(),
   
   // SEO fields
   slug: z.string().min(1, 'Slug is required').regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
@@ -241,10 +232,6 @@ export const insertProductSchema = createInsertSchema(products, {
   isFeatured: z.boolean().default(false),
   isNew: z.boolean().default(true),
   isBestseller: z.boolean().default(false),
-  
-  // Licensing
-  licenseType: z.enum(['standard', 'extended', 'commercial']).default('standard'),
-  usageRights: z.array(z.string()).default([]),
 });
 export const selectProductSchema = createSelectSchema(products);
 export type InsertProduct = z.infer<typeof insertProductSchema>;
@@ -258,10 +245,7 @@ export const selectReviewSchema = createSelectSchema(reviews);
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type SelectReview = z.infer<typeof selectReviewSchema>;
 
-export const insertDownloadSchema = createInsertSchema(downloads);
-export const selectDownloadSchema = createSelectSchema(downloads);
-export type InsertDownload = z.infer<typeof insertDownloadSchema>;
-export type SelectDownload = z.infer<typeof selectDownloadSchema>;
+
 
 // Categories schemas
 export const insertCategorySchema = createInsertSchema(categories, {
@@ -314,7 +298,7 @@ export type SelectPromotionUsage = z.infer<typeof selectPromotionUsageSchema>;
 
 // Analytics Events schemas
 export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents, {
-  eventType: z.enum(['page_view', 'product_view', 'download', 'purchase', 'search']),
+  eventType: z.enum(['page_view', 'product_view', 'add_to_cart', 'purchase', 'search']),
 });
 export const selectAnalyticsEventSchema = createSelectSchema(analyticsEvents);
 export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
@@ -329,6 +313,220 @@ export const selectSettingSchema = createSelectSchema(settings);
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type SelectSetting = z.infer<typeof selectSettingSchema>;
 
+// Product Variants table
+export const productVariants = pgTable('product_variants', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  sku: text('sku').notNull().unique(),
+  title: text('title'),
+  price: decimal('price', { precision: 10, scale: 2 }),
+  compareAtPrice: decimal('compare_at_price', { precision: 10, scale: 2 }),
+  attributes: jsonb('attributes').$type<Record<string, string>>(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Inventory table (per variant or product)
+export const inventory = pgTable('inventory', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: uuid('product_id').references(() => products.id),
+  variantId: uuid('variant_id').references(() => productVariants.id),
+  stock: integer('stock').notNull().default(0),
+  reserved: integer('reserved').notNull().default(0),
+  lowStockThreshold: integer('low_stock_threshold').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Address book for users
+export const addresses = pgTable('addresses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  fullName: text('full_name').notNull(),
+  phone: text('phone'),
+  company: text('company'),
+  addressLine1: text('address_line1').notNull(),
+  addressLine2: text('address_line2'),
+  city: text('city').notNull(),
+  state: text('state'),
+  postalCode: text('postal_code').notNull(),
+  country: text('country').notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Carts
+export const carts = pgTable('carts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  sessionId: text('session_id'),
+  currency: text('currency').notNull().default('USD'),
+  subtotalAmount: decimal('subtotal_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  shippingAmount: decimal('shipping_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  status: text('status').notNull().default('active'), // 'active' | 'abandoned' | 'converted'
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Cart Items
+export const cartItems = pgTable('cart_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  cartId: uuid('cart_id').references(() => carts.id).notNull(),
+  productId: uuid('product_id').references(() => products.id).notNull(),
+  variantId: uuid('variant_id').references(() => productVariants.id),
+  quantity: integer('quantity').notNull().default(1),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Order Addresses snapshot (billing/shipping captured at checkout)
+export const orderAddresses = pgTable('order_addresses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').references(() => orders.id).notNull(),
+  type: text('type').notNull().default('shipping'), // 'shipping' | 'billing'
+  fullName: text('full_name').notNull(),
+  phone: text('phone'),
+  company: text('company'),
+  addressLine1: text('address_line1').notNull(),
+  addressLine2: text('address_line2'),
+  city: text('city').notNull(),
+  state: text('state'),
+  postalCode: text('postal_code').notNull(),
+  country: text('country').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Shipments
+export const shipments = pgTable('shipments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: uuid('order_id').references(() => orders.id).notNull(),
+  provider: text('provider'),
+  service: text('service'),
+  trackingNumber: text('tracking_number'),
+  status: text('status').notNull().default('pending'), // 'pending' | 'created' | 'shipped' | 'in_transit' | 'delivered' | 'cancelled'
+  cost: decimal('cost', { precision: 10, scale: 2 }).notNull().default('0.00'),
+  currency: text('currency').notNull().default('USD'),
+  estimatedDays: integer('estimated_days'),
+  shippedAt: timestamp('shipped_at'),
+  deliveredAt: timestamp('delivered_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const shipmentItems = pgTable('shipment_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shipmentId: uuid('shipment_id').references(() => shipments.id).notNull(),
+  orderItemId: uuid('order_item_id').references(() => orderItems.id).notNull(),
+  quantity: integer('quantity').notNull().default(1),
+});
+
+// Tax rates
+export const taxRates = pgTable('tax_rates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  country: text('country'),
+  region: text('region'),
+  rate: decimal('rate', { precision: 7, scale: 4 }).notNull(), // e.g., 0.1000 = 10%
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Zod schemas for new tables
+export const insertProductVariantSchema = createInsertSchema(productVariants, {
+  sku: z.string().min(1),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format').optional(),
+  compareAtPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format').optional(),
+});
+export const selectProductVariantSchema = createSelectSchema(productVariants);
+export type InsertProductVariant = z.infer<typeof insertProductVariantSchema>;
+export type SelectProductVariant = z.infer<typeof selectProductVariantSchema>;
+
+export const insertInventorySchema = createInsertSchema(inventory, {
+  stock: z.number().min(0),
+  reserved: z.number().min(0),
+  lowStockThreshold: z.number().min(0),
+});
+export const selectInventorySchema = createSelectSchema(inventory);
+export type InsertInventory = z.infer<typeof insertInventorySchema>;
+export type SelectInventory = z.infer<typeof selectInventorySchema>;
+
+export const insertAddressSchema = createInsertSchema(addresses, {
+  fullName: z.string().min(1),
+  addressLine1: z.string().min(1),
+  city: z.string().min(1),
+  postalCode: z.string().min(1),
+  country: z.string().min(1),
+});
+export const selectAddressSchema = createSelectSchema(addresses);
+export type InsertAddress = z.infer<typeof insertAddressSchema>;
+export type SelectAddress = z.infer<typeof selectAddressSchema>;
+
+export const insertCartSchema = createInsertSchema(carts, {
+  currency: z.string().min(1),
+  subtotalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  discountAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  taxAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  shippingAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  totalAmount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  status: z.enum(['active', 'abandoned', 'converted']).default('active'),
+});
+export const selectCartSchema = createSelectSchema(carts);
+export type InsertCart = z.infer<typeof insertCartSchema>;
+export type SelectCart = z.infer<typeof selectCartSchema>;
+
+export const insertCartItemSchema = createInsertSchema(cartItems, {
+  quantity: z.number().min(1),
+  unitPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
+  totalPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price format'),
+});
+export const selectCartItemSchema = createSelectSchema(cartItems);
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type SelectCartItem = z.infer<typeof selectCartItemSchema>;
+
+export const insertOrderAddressSchema = createInsertSchema(orderAddresses, {
+  type: z.enum(['shipping', 'billing']).default('shipping'),
+  fullName: z.string().min(1),
+  addressLine1: z.string().min(1),
+  city: z.string().min(1),
+  postalCode: z.string().min(1),
+  country: z.string().min(1),
+});
+export const selectOrderAddressSchema = createSelectSchema(orderAddresses);
+export type InsertOrderAddress = z.infer<typeof insertOrderAddressSchema>;
+export type SelectOrderAddress = z.infer<typeof selectOrderAddressSchema>;
+
+export const insertShipmentSchema = createInsertSchema(shipments, {
+  status: z.enum(['pending', 'created', 'shipped', 'in_transit', 'delivered', 'cancelled']).default('pending'),
+  cost: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount'),
+  currency: z.string().min(1),
+});
+export const selectShipmentSchema = createSelectSchema(shipments);
+export type InsertShipment = z.infer<typeof insertShipmentSchema>;
+export type SelectShipment = z.infer<typeof selectShipmentSchema>;
+
+export const insertShipmentItemSchema = createInsertSchema(shipmentItems, {
+  quantity: z.number().min(1),
+});
+export const selectShipmentItemSchema = createSelectSchema(shipmentItems);
+export type InsertShipmentItem = z.infer<typeof insertShipmentItemSchema>;
+export type SelectShipmentItem = z.infer<typeof selectShipmentItemSchema>;
+
+export const insertTaxRateSchema = createInsertSchema(taxRates, {
+  name: z.string().min(1),
+  rate: z.string().regex(/^\d+(\.\d{1,4})?$/, 'Invalid tax rate'),
+});
+export const selectTaxRateSchema = createSelectSchema(taxRates);
+export type InsertTaxRate = z.infer<typeof insertTaxRateSchema>;
+export type SelectTaxRate = z.infer<typeof selectTaxRateSchema>;
+
 // Types
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -336,5 +534,22 @@ export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
 export type Review = typeof reviews.$inferSelect;
 export type NewReview = typeof reviews.$inferInsert;
-export type Download = typeof downloads.$inferSelect;
-export type NewDownload = typeof downloads.$inferInsert;
+// removed: export type Download/NewDownload (downloads table removed)
+export type ProductVariant = typeof productVariants.$inferSelect;
+export type NewProductVariant = typeof productVariants.$inferInsert;
+export type Inventory = typeof inventory.$inferSelect;
+export type NewInventory = typeof inventory.$inferInsert;
+export type Address = typeof addresses.$inferSelect;
+export type NewAddress = typeof addresses.$inferInsert;
+export type Cart = typeof carts.$inferSelect;
+export type NewCart = typeof carts.$inferInsert;
+export type CartItem = typeof cartItems.$inferSelect;
+export type NewCartItem = typeof cartItems.$inferInsert;
+export type OrderAddress = typeof orderAddresses.$inferSelect;
+export type NewOrderAddress = typeof orderAddresses.$inferInsert;
+export type Shipment = typeof shipments.$inferSelect;
+export type NewShipment = typeof shipments.$inferInsert;
+export type ShipmentItem = typeof shipmentItems.$inferSelect;
+export type NewShipmentItem = typeof shipmentItems.$inferInsert;
+export type TaxRate = typeof taxRates.$inferSelect;
+export type NewTaxRate = typeof taxRates.$inferInsert;

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { products, categories, users } from "@/lib/db/schema";
+import { products, productVariants, inventory, orderItems } from "@/lib/db/schema";
 import {
   and,
   asc,
@@ -11,13 +11,14 @@ import {
   ilike,
   inArray,
   sql,
+  or,
 } from "drizzle-orm";
 
 import { buildFilterWhere } from "@/lib/filter-columns";
 import { unstable_cache } from "next/cache";
 
-import { productsSearchParamsCache } from "@/lib/search-params";
 import type { GetProductsSchema } from "../validations/products";
+import type { PgColumn } from "drizzle-orm/pg-core";
 
 export async function getProducts(input: GetProductsSchema) {
   return await unstable_cache(
@@ -29,15 +30,47 @@ export async function getProducts(input: GetProductsSchema) {
           input.filterFlag === "advancedFilters" ||
           input.filterFlag === "commandFilters";
 
+        const filterOperators = [
+          "eq",
+          "ne",
+          "ilike",
+          "notIlike",
+          "isNull",
+          "isNotNull",
+          "gte",
+          "lte",
+          "gt",
+          "lt",
+          "in",
+        ] as const;
+
+        type FilterOperatorLocal = typeof filterOperators[number];
+
+        function isFilterOperator(value: unknown): value is FilterOperatorLocal {
+          return (
+            typeof value === "string" &&
+            (filterOperators as readonly string[]).includes(value)
+          );
+        }
+
         const advancedWhere = buildFilterWhere(
-          Array.isArray(input.filters) ? input.filters.map(filter => {
-            const column = products[filter.id as keyof typeof products] as any;
-            return {
-              column,
-              value: filter.value,
-              operator: filter.operator as any,
-            };
-          }) : [],
+          Array.isArray(input.filters)
+            ? (input.filters.map((filter) => {
+                const column = products[
+                  filter.id as keyof typeof products
+                ] as unknown as PgColumn;
+                const operator: FilterOperatorLocal = isFilterOperator(
+                  filter.operator,
+                )
+                  ? filter.operator
+                  : "eq";
+                return {
+                  column,
+                  value: filter.value,
+                  operator,
+                };
+              }) as unknown as Parameters<typeof buildFilterWhere>[0])
+            : [],
           input.joinOperator,
         );
 
@@ -61,16 +94,33 @@ export async function getProducts(input: GetProductsSchema) {
           columnFilters.push(inArray(products.isActive, input.isActive.map(val => val === 'true')));
         }
         
-        // Handle price filter (range) - check if price filters exist in URL
-        if (input.price && Array.isArray(input.price) && input.price.length === 2) {
-          const [minPrice, maxPrice] = input.price.map(p => parseFloat(p));
+        // Handle price filter (range) - support min and/or max
+        if (input.price && Array.isArray(input.price)) {
+          const [rawMin, rawMax] = input.price;
+          const minPrice = rawMin !== undefined && rawMin !== '' ? parseFloat(rawMin) : NaN;
+          const maxPrice = rawMax !== undefined && rawMax !== '' ? parseFloat(rawMax) : NaN;
+          
           if (!isNaN(minPrice) && !isNaN(maxPrice)) {
             columnFilters.push(
               and(
                 sql`${products.price} >= ${minPrice}`,
-                sql`${products.price} <= ${maxPrice}`
-              )
+                sql`${products.price} <= ${maxPrice}`,
+              ),
             );
+          } else if (!isNaN(minPrice)) {
+            columnFilters.push(sql`${products.price} >= ${minPrice}`);
+          } else if (!isNaN(maxPrice)) {
+            columnFilters.push(sql`${products.price} <= ${maxPrice}`);
+          }
+        }
+
+        // Handle tags filter (match any selected tag)
+        if (input.tags && Array.isArray(input.tags) && input.tags.length > 0) {
+          const tagConds = input.tags
+            .filter((t) => typeof t === 'string' && t.trim().length > 0)
+            .map((t) => sql`${products.tags}::text ILIKE ${`%"${t}"%`}`);
+          if (tagConds.length > 0) {
+            columnFilters.push(or(...tagConds));
           }
         }
 
@@ -95,40 +145,180 @@ export async function getProducts(input: GetProductsSchema) {
             ? asc(products.createdAt)
             : input.sort === "createdAt.desc"
             ? desc(products.createdAt)
-            : input.sort === "downloadCount.asc"
-            ? asc(products.downloadCount)
-            : input.sort === "downloadCount.desc"
-            ? desc(products.downloadCount)
+            : input.sort === "viewCount.asc"
+            ? asc(products.viewCount)
+            : input.sort === "viewCount.desc"
+            ? desc(products.viewCount)
             : desc(products.createdAt);
 
         // Execute queries separately since Neon HTTP doesn't support transactions
         const data = await db
-          .select({
-            id: products.id,
-            title: products.title,
-            description: products.description,
-            price: products.price,
-            categoryId: products.categoryId,
-            category: products.category,
-            tags: products.tags,
-            imageUrl: products.imageUrl,
-            thumbnailUrl: products.thumbnailUrl,
-            fileUrl: products.fileUrl,
-            fileName: products.fileName,
-            fileSize: products.fileSize,
-            fileFormat: products.fileFormat,
-            dimensions: products.dimensions,
-            downloadCount: products.downloadCount,
-            isActive: products.isActive,
-            createdBy: products.createdBy,
-            createdAt: products.createdAt,
-            updatedAt: products.updatedAt,
-          })
+          .select()
           .from(products)
           .limit(input.perPage)
           .offset(offset)
           .where(where)
           .orderBy(orderBy);
+
+        // ---- NEW: compute aggregates and variants for returned products ----
+        const productIds = data.map((p) => p.id);
+        // Early return if no products
+        if (productIds.length === 0) {
+          return {
+            data: [],
+            pageCount: 0,
+          };
+        }
+
+        // Import needed tables locally to avoid circular imports at top in Fast Apply
+        // (removed dynamic imports; using top-level imports for schema and drizzle functions)
+
+        // Fetch variants with their stock
+        const variantRows = await db
+          .select({
+            id: productVariants.id,
+            productId: productVariants.productId,
+            sku: productVariants.sku,
+            title: productVariants.title,
+            price: productVariants.price,
+            compareAtPrice: productVariants.compareAtPrice,
+            stock: sql<number>`COALESCE(SUM(${inventory.stock} - ${inventory.reserved}), 0)`,
+          })
+          .from(productVariants)
+          .leftJoin(inventory, eq(inventory.variantId, productVariants.id))
+          .where(inArray(productVariants.productId, productIds))
+          .groupBy(
+            productVariants.id,
+            productVariants.productId,
+            productVariants.sku,
+            productVariants.title,
+            productVariants.price,
+            productVariants.compareAtPrice,
+          );
+
+        // Product-level inventory (variantId is null)
+        const productInventoryRows = await db
+          .select({
+            productId: inventory.productId,
+            stock: sql<number>`COALESCE(SUM(${inventory.stock} - ${inventory.reserved}), 0)`,
+          })
+          .from(inventory)
+          .where(
+            and(
+              inArray(inventory.productId, productIds),
+              sql`${inventory.variantId} IS NULL`,
+            ),
+          )
+          .groupBy(inventory.productId);
+
+        // Sales count per product
+        const salesRows = await db
+          .select({
+            productId: orderItems.productId,
+            salesCount: sql<number>`COALESCE(SUM(${orderItems.quantity}), 0)`,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.productId, productIds))
+          .groupBy(orderItems.productId);
+
+        // Define strong type for variant aggregation and replace any[] map
+        type VariantAgg = {
+          id: string;
+          productId: string;
+          sku: string | null;
+          title: string | null;
+          price: number | null;
+          compareAtPrice: number | null;
+          stock: number;
+        };
+        const variantsByProduct = new Map<string, VariantAgg[]>();
+        for (const v of variantRows) {
+          const list = variantsByProduct.get(v.productId) ?? [];
+          list.push({
+            id: v.id,
+            productId: v.productId,
+            sku: v.sku ?? null,
+            title: v.title ?? null,
+            price:
+              v.price !== null && v.price !== undefined
+                ? Number((v.price as unknown) as string)
+                : null,
+            compareAtPrice:
+              v.compareAtPrice !== null && v.compareAtPrice !== undefined
+                ? Number((v.compareAtPrice as unknown) as string)
+                : null,
+            stock: Number(v.stock ?? 0),
+          });
+          variantsByProduct.set(v.productId, list);
+        }
+
+        const productInventoryMap = new Map<string, number>();
+        for (const r of productInventoryRows) {
+          productInventoryMap.set(r.productId!, Number(r.stock ?? 0));
+        }
+
+        const salesMap = new Map<string, number>();
+        for (const r of salesRows) {
+          salesMap.set(r.productId!, Number(r.salesCount ?? 0));
+        }
+
+        // Type the extended array and remove any casts
+        // Insert ProductRow type based on selected data shape
+        // and type the extended array accordingly
+        // Replace the original untyped declaration
+        // const extended = data.map((p) => {
+        // with the following typed version:
+        type ProductRow = typeof data[number];
+        const extended: Array<
+          ProductRow & {
+            variants: VariantAgg[];
+            variantCount: number;
+            totalStock: number;
+            priceMin: number;
+            priceMax: number;
+            compareAtMin: number | null;
+            compareAtMax: number | null;
+            salesCount: number;
+          }
+        > = data.map((p) => {
+          const variants = variantsByProduct.get(p.id) ?? [];
+          const variantPrices = variants
+            .map((v) => (v.price !== null && v.price !== undefined ? v.price : NaN))
+            .filter((n) => !Number.isNaN(n));
+          const productPrice = p.price !== null && p.price !== undefined ? Number(p.price as unknown as string) : NaN;
+
+          const minPriceCandidates = [...variantPrices, productPrice].filter((n) => !Number.isNaN(n));
+          const maxPriceCandidates = [...variantPrices, productPrice].filter((n) => !Number.isNaN(n));
+          const minPrice = minPriceCandidates.length ? Math.min(...minPriceCandidates) : 0;
+          const maxPrice = maxPriceCandidates.length ? Math.max(...maxPriceCandidates) : 0;
+
+          const compareAtPrices = variants
+            .map((v) => (v.compareAtPrice !== null && v.compareAtPrice !== undefined ? v.compareAtPrice : NaN))
+            .filter((n) => !Number.isNaN(n));
+          const productOrig = p.originalPrice !== undefined && p.originalPrice !== null ? Number(p.originalPrice as unknown as string) : NaN;
+          const minCompareAt = [...compareAtPrices, productOrig].filter((n) => !Number.isNaN(n)).reduce((a, b) => Math.min(a, b), Number.POSITIVE_INFINITY);
+          const maxCompareAt = [...compareAtPrices, productOrig].filter((n) => !Number.isNaN(n)).reduce((a, b) => Math.max(a, b), 0);
+
+          const variantStockSum = variants.reduce((sum, v) => sum + Number(v.stock ?? 0), 0);
+          const productLevelStock = productInventoryMap.get(p.id) ?? 0;
+          const totalStock = variantStockSum + productLevelStock;
+
+          const salesCount = salesMap.get(p.id) ?? 0;
+
+          return {
+            ...p,
+            variants,
+            variantCount: variants.length,
+            totalStock,
+            priceMin: minPrice,
+            priceMax: maxPrice,
+            compareAtMin: Number.isFinite(minCompareAt) ? minCompareAt : null,
+            compareAtMax: maxCompareAt || null,
+            salesCount,
+          };
+        });
+
+        // ---- END NEW ----
 
         const total = await db
           .select({
@@ -144,8 +334,9 @@ export async function getProducts(input: GetProductsSchema) {
 
 
         return {
-          data,
+          data: extended,
           pageCount,
+          total,
         };
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -330,7 +521,7 @@ export async function getFeaturedProducts(limit = 8) {
           .from(products)
           .where(eq(products.isActive, true))
           .limit(limit)
-          .orderBy(desc(products.downloadCount));
+          .orderBy(desc(products.viewCount));
 
         return productsList;
       } catch (err) {
@@ -355,7 +546,7 @@ export async function getProductStats() {
             total: count(),
             active: sql<number>`count(case when ${products.isActive} = true then 1 end)`,
             inactive: sql<number>`count(case when ${products.isActive} = false then 1 end)`,
-            totalDownloads: sql<number>`sum(${products.downloadCount})`,
+            // removed totalDownloads
           })
           .from(products)
           .then((res) => res[0]);
@@ -364,16 +555,16 @@ export async function getProductStats() {
           total: stats?.total ?? 0,
           active: stats?.active ?? 0,
           inactive: stats?.inactive ?? 0,
-          totalDownloads: stats?.totalDownloads ?? 0,
-        };
+          // removed totalDownloads from return
+        } as const;
       } catch (err) {
         console.error("Error fetching product stats:", err);
         return {
           total: 0,
           active: 0,
           inactive: 0,
-          totalDownloads: 0,
-        };
+          // removed totalDownloads from fallback
+        } as const;
       }
     },
     ["product-stats"],
@@ -398,7 +589,7 @@ export async function searchProducts(query: string, limit = 20) {
             )
           )
           .limit(limit)
-          .orderBy(desc(products.downloadCount));
+          .orderBy(desc(products.viewCount));
 
         return productsList;
       } catch (err) {

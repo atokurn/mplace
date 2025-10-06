@@ -1,93 +1,100 @@
 import "server-only"
 
 import { unstable_cache } from "next/cache"
-import { db } from "@/lib/db"
-import { users, type SelectUser } from "@/lib/db/schema"
-import { buildFilterWhere } from "@/lib/filter-columns"
-import { usersSearchParamsCache } from "@/lib/search-params"
-import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm"
+import { asc, count, desc, eq } from "drizzle-orm"
 
-export async function getUsers(input: ReturnType<typeof usersSearchParamsCache.parse>) {
+import { db } from "../../../lib/db"
+import { type User, users } from "../../../lib/db/schema"
+import { buildFilterWhere } from '../../../lib/filter-columns'
+import type { usersSearchParamsCache } from "../../../lib/search-params"
+
+export async function getUsers(input: Awaited<ReturnType<typeof usersSearchParamsCache.parse>>) {
   return await unstable_cache(
     async () => {
-      const { page, per_page, sort, name, email, role, operator } = input
-
       try {
-        // Offset to paginate the results
-        const offset = (page - 1) * per_page
+        const { page, perPage, sort, name, email, role, operator } = input
 
-        // Column and order to sort by
-        // Spliting the sort string by "." to get the column and order
-        // Example: "title.desc" => ["title", "desc"]
-        const [column, order] = (sort?.split(".").filter(Boolean) ?? [
-          "createdAt",
-          "desc",
-        ]) as [keyof SelectUser | undefined, "asc" | "desc" | undefined]
+    // Offset to paginate the results
+    const offset = (page - 1) * perPage
 
-        // Convert the column name to the actual column in the database
-        // And sort by the column in the specified order
-        const orderBy =
-          column && column in users
-            ? order === "asc"
-              ? asc(users[column])
-              : desc(users[column])
-            : desc(users.createdAt)
+    // Column and order to sort by
+    // Spliting the sort string by "." to get the column and order
+    // Example: "title.desc" => ["title", "desc"]
+    const [column, order] = (sort?.split(".").filter(Boolean) ?? [
+      "createdAt",
+      "desc",
+    ]) as [keyof User | undefined, "asc" | "desc" | undefined]
 
-        const expressions = [
-          name
-            ? ilike(users.name, `%${name}%`)
-            : undefined,
-          email
-            ? ilike(users.email, `%${email}%`)
-            : undefined,
-          role
-            ? eq(users.role, role)
-            : undefined,
-        ].filter(Boolean)
+    // Convert the column name to the actual column in the database
+    // And sort by the column in the specified order
+    const orderBy =
+      column && column in users
+        ? order === "asc"
+          ? asc(users[column])
+          : desc(users[column])
+        : desc(users.createdAt)
 
-        const where = buildFilterWhere({
-          column: "name",
-          value: expressions,
-          operator,
-          isSelectable: false,
-        })
+    const filters: {
+      column: typeof users.name | typeof users.email | typeof users.role
+      value: string | string[]
+      operator?: 'eq' | 'ne' | 'ilike' | 'notIlike' | 'isNull' | 'isNotNull' | 'gte' | 'lte' | 'gt' | 'lt' | 'in'
+    }[] = []
 
-        // Transaction is used to ensure both queries are executed in a single transaction
-        const { data, total } = await db.transaction(async (tx) => {
-          const data = await tx
-            .select({
-              id: users.id,
-              name: users.name,
-              email: users.email,
-              role: users.role,
-              avatar: users.avatar,
-              createdAt: users.createdAt,
-              updatedAt: users.updatedAt,
-            })
-            .from(users)
-            .limit(per_page)
-            .offset(offset)
-            .where(where)
-            .orderBy(orderBy)
+    if (name) {
+      filters.push({
+        column: users.name,
+        value: name,
+        operator: 'ilike',
+      })
+    }
 
-          const total = await tx
-            .select({
-              count: count(),
-            })
-            .from(users)
-            .where(where)
-            .execute()
-            .then((res) => res[0]?.count ?? 0)
+    if (email) {
+      filters.push({
+        column: users.email,
+        value: email,
+        operator: 'ilike',
+      })
+    }
 
-          return {
-            data,
-            total,
-          }
-        })
+    if (Array.isArray(role) && role.length > 0) {
+      filters.push({
+        column: users.role,
+        value: role,
+        operator: 'in',
+      })
+    }
 
-        const pageCount = Math.ceil(total / per_page)
+    const where = buildFilterWhere(filters, operator)
+
+    // Get data without transaction for now
+    const data = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        avatar: users.avatar,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .limit(perPage)
+      .offset(offset)
+      .where(where)
+      .orderBy(orderBy)
+
+    const totalResult = await db
+      .select({
+        count: count(),
+      })
+      .from(users)
+      .where(where)
+      
+    const total = totalResult[0]?.count ?? 0
+
+        const pageCount = Math.ceil(total / perPage)
         return { data, pageCount }
-      } catch (err) {
+      } catch {
         return { data: [], pageCount: 0 }
       }
     },
@@ -118,7 +125,7 @@ export async function getUserById(id: string) {
           .limit(1)
 
         return user[0] ?? null
-      } catch (err) {
+      } catch {
         return null
       }
     },
@@ -146,7 +153,7 @@ export async function getUserRoleCounts() {
           admin: roleCounts.find((item) => item.role === "admin")?.count ?? 0,
           user: roleCounts.find((item) => item.role === "user")?.count ?? 0,
         }
-      } catch (err) {
+      } catch {
         return {
           admin: 0,
           user: 0,
@@ -156,35 +163,26 @@ export async function getUserRoleCounts() {
     ["user-role-counts"],
     {
       revalidate: 3600,
-      tags: ["users"],
+      tags: ["user-role-counts", `users`],
     }
   )()
 }
 
 export async function getUsersForExport() {
-  return await unstable_cache(
-    async () => {
-      try {
-        const data = await db
-          .select({
-            id: users.id,
-            name: users.name,
-            email: users.email,
-            role: users.role,
-            createdAt: users.createdAt,
-          })
-          .from(users)
-          .orderBy(desc(users.createdAt))
+  try {
+    const data = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .orderBy(desc(users.createdAt))
 
-        return data
-      } catch (err) {
-        return []
-      }
-    },
-    ["users-export"],
-    {
-      revalidate: 3600,
-      tags: ["users"],
-    }
-  )()
+    return data
+  } catch {
+    return []
+  }
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
+import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -115,10 +116,14 @@ export function FileUpload({
       {value ? (
         <div className="relative">
           <div className="relative aspect-square w-32 overflow-hidden rounded-lg border bg-muted">
-            <img
+            <Image
               src={value}
               alt="Uploaded image"
+              fill
+              sizes="128px"
               className="h-full w-full object-cover"
+              unoptimized
+              priority={false}
             />
             {!disabled && (
               <Button

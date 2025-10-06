@@ -55,7 +55,6 @@ export function getPublicUrl(key: string) {
 // Helper function to generate unique file key
 export function generateFileKey(originalName: string, userId: string) {
   const timestamp = Date.now();
-  const extension = originalName.split('.').pop();
   const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
   return `uploads/${userId}/${timestamp}_${sanitizedName}`;
 }

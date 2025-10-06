@@ -33,6 +33,10 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getSortingStateParser } from "@/lib/parsers";
 import type { ExtendedColumnSort } from "@/types/data-table";
 
+// Add expanded types and helpers from tanstack
+import type { ExpandedState } from "@tanstack/react-table";
+import { getExpandedRowModel } from "@tanstack/react-table";
+
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
 const SORT_KEY = "sort";
@@ -109,6 +113,11 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>(initialState?.columnVisibility ?? {});
 
+  // Expanded state for row expansion
+  const [expanded, setExpanded] = React.useState<ExpandedState>(
+    (initialState as Partial<TableState> | undefined)?.expanded ?? {},
+  );
+
   const [page, setPage] = useQueryState(
     PAGE_KEY,
     parseAsInteger.withOptions(queryStateOptions).withDefault(1),
@@ -143,7 +152,13 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const columnIds = React.useMemo(() => {
     return new Set(
-      columns.map((column) => column.id).filter(Boolean) as string[],
+      columns
+        .map((column) => {
+          if (column.id) return column.id;
+          const col = column as { accessorKey?: string };
+          return typeof col.accessorKey === "string" ? col.accessorKey : undefined;
+        })
+        .filter((id): id is string => Boolean(id)),
     );
   }, [columns]);
 
@@ -328,6 +343,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       columnVisibility,
       rowSelection,
       columnFilters,
+      expanded,
     },
     defaultColumn: {
       ...tableProps.defaultColumn,
@@ -339,6 +355,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     onSortingChange,
     onColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -346,6 +363,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
+    getExpandedRowModel: getExpandedRowModel(),
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,

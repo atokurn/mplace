@@ -1,70 +1,32 @@
 "use client";
 
-import type { Product } from "@/lib/db/schema";
-import type { DataTableRowAction } from "@/types/data-table";
-import { type ColumnDef } from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  CheckCircle2,
-  Copy,
-  DollarSign,
-  Download,
-  Eye,
-  MoreHorizontal,
-  Package,
-  Pencil,
-  Tag,
-  Trash2,
-  XCircle,
-} from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
 import * as React from "react";
-import { toast } from "sonner";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import type { Product } from "@/lib/db/schema";
+import { ArrowUpDown, CircleDashed, DollarSign, Text, CheckCircle2, XCircle, ChevronDown, ChevronRight } from "lucide-react";
+import Image from "next/image";
 import { formatPrice } from "@/lib/utils";
-import type {
-  getProductStatusCounts,
-  getProductCategoryCounts,
-  getProductPriceRange,
-} from "@/app/_lib/queries/products";
 
 interface GetProductsTableColumnsProps {
-  statusCounts: Awaited<ReturnType<typeof getProductStatusCounts>>;
-  categoryCounts: Awaited<ReturnType<typeof getProductCategoryCounts>>;
-  priceRange: Awaited<ReturnType<typeof getProductPriceRange>>;
-
+  statusCounts: { active: number; inactive: number };
+  categoryCounts: Record<string, number>;
+  priceRange: { min: number; max: number };
 }
 
 export function getProductsTableColumns({
   statusCounts,
   categoryCounts,
   priceRange,
-}: Omit<GetProductsTableColumnsProps, 'setRowAction'>): ColumnDef<Product>[] {
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  };
+}: GetProductsTableColumnsProps): ColumnDef<Product>[] {
+  // Build category options from counts map
+  const categoryOptions = Object.entries(categoryCounts).map(([value, count]) => ({
+    label: value,
+    value,
+    count,
+  }));
 
   return [
     {
@@ -72,11 +34,15 @@ export function getProductsTableColumns({
       header: ({ table }) => (
         <Checkbox
           checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
+            table.getIsAllPageRowsSelected()
+              ? true
+              : table.getIsSomePageRowsSelected()
+              ? "indeterminate"
+              : false
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
           aria-label="Select all"
+          className="translate-y-0.5"
         />
       ),
       cell: ({ row }) => (
@@ -84,6 +50,7 @@ export function getProductsTableColumns({
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
           aria-label="Select row"
+          className="translate-y-0.5"
         />
       ),
       enableSorting: false,
@@ -93,283 +60,172 @@ export function getProductsTableColumns({
     {
       id: "title",
       accessorKey: "title",
-      header: "Product Info",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Produk" />
+      ),
       cell: ({ row }) => {
-        const product = row.original;
-        console.log({productCell: {title: product.title, id: product.id}});
-        
+        const p: any = row.original as any;
+        const imageUrl: string = p?.thumbnailUrl || p?.imageUrl || "/placeholder.svg";
+        const variantCount: number = (p?.variantCount ?? (Array.isArray(p?.variants) ? p.variants.length : 0)) as number;
+        const firstSku: string | null = Array.isArray(p?.variants) && p.variants.length > 0 ? (p.variants[0]?.sku ?? null) : null;
+        const isExpandable = variantCount >= 3;
+        const isExpanded = row.getIsExpanded();
         return (
-          <div className="flex items-center space-x-2 min-w-0 w-full">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer">
-                    <Image
-                      src={product.thumbnailUrl || product.imageUrl || "/placeholder.svg"}
-                      alt={product.title}
-                      fill
-                      className="object-cover"
-                      sizes="48px"
-                    />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="p-3 max-w-xs">
-                  <div className="space-y-3">
-                    <div className="relative h-32 w-full rounded-md overflow-hidden">
-                      <Image
-                        src={product.imageUrl || "/placeholder.svg"}
-                        alt={product.title}
-                        fill
-                        className="object-cover"
-                        sizes="450px"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="font-medium text-sm leading-tight">{product.title}</h4>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        {product.fileSize && (
-                          <div>File Size: <span className="font-medium">{formatFileSize(product.fileSize)}</span></div>
-                        )}
-                        {product.dimensions && (
-                          <div>Dimensions: <span className="font-medium">{product.dimensions}</span></div>
-                        )}
-                        {product.fileFormat && (
-                          <div>Format: <span className="font-medium">{product.fileFormat.toUpperCase()}</span></div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <div className="min-w-0 flex-1">
-              <div className="font-medium truncate text-sm">{product.title}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {product.dimensions && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground mr-1">
-                    {product.dimensions}
-                  </span>
-                )}
-                {product.fileFormat && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary mr-1">
-                    {product.fileFormat.toUpperCase()}
-                  </span>
-                )}
+          <div className="flex items-center gap-3 max-w-[40rem]">
+            <Image
+              src={imageUrl}
+              alt={p?.title ?? "Product"}
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded object-cover"
+            />
+            <div className="min-w-0">
+              <div className="truncate font-medium">{p?.title}</div>
+              <div className="text-xs text-muted-foreground">
+                ID: {p?.id}
+                {firstSku ? <>
+                  {" "}• SKU: {firstSku}
+                </> : null}
               </div>
+              {isExpandable ? (
+                <button
+                  type="button"
+                  onClick={row.getToggleExpandedHandler()}
+                  className="mt-1 inline-flex items-center text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="mr-1 h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="mr-1 h-3 w-3" />
+                  )}
+                  {variantCount} SKU
+                </button>
+              ) : null}
             </div>
           </div>
         );
       },
+      meta: {
+        label: "Title",
+        placeholder: "Search titles...",
+        variant: "text",
+        icon: Text,
+      },
       enableColumnFilter: true,
       filterFn: "includesString",
-      meta: {
-        variant: "text",
-      },
     },
     {
+      id: "category",
       accessorKey: "category",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          Category
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <DataTableColumnHeader column={column} title="Category" />
       ),
-      cell: ({ row }) => {
-        const category = row.getValue("category") as string;
-        return (
-          <Badge variant="outline" className="capitalize">
-            <Tag className="mr-1 h-3 w-3" />
-            {category || "Uncategorized"}
-          </Badge>
-        );
+      cell: ({ row }) => <div className="w-40 truncate">{row.getValue("category")}</div>,
+      meta: {
+        label: "Category",
+        variant: "multiSelect",
+        options: categoryOptions,
+        icon: CircleDashed,
       },
       enableColumnFilter: true,
       filterFn: "arrIncludesSome",
-      meta: {
-        variant: "multiSelect",
-        options: categoryCounts && Object.keys(categoryCounts).length > 0 
-          ? Object.keys(categoryCounts).map((category) => ({
-              label: category || "Uncategorized",
-              value: category || "uncategorized",
-              count: categoryCounts[category] || 0,
-            }))
-          : [
-              { label: "Templates", value: "Templates", count: 0 },
-              { label: "Icons", value: "Icons", count: 0 },
-              { label: "Fonts", value: "Fonts", count: 0 },
-              { label: "Graphics", value: "Graphics", count: 0 },
-            ],
-      },
     },
     {
+      id: "price",
       accessorKey: "price",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          Price
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <DataTableColumnHeader column={column} title="Harga jual" />
       ),
       cell: ({ row }) => {
-        const price = row.getValue("price") as number;
+        const p: any = row.original as any;
+        const price = row.getValue<number>("price");
+        const priceMin: number | undefined = typeof p?.priceMin === "number" ? p.priceMin : undefined;
+        const priceMax: number | undefined = typeof p?.priceMax === "number" ? p.priceMax : undefined;
+        const compareAtMin: number | null | undefined = typeof p?.compareAtMin === "number" ? p.compareAtMin : undefined;
+        const compareAtMax: number | null | undefined = typeof p?.compareAtMax === "number" ? p.compareAtMax : undefined;
+
+        const sellText = (() => {
+          if (typeof priceMin === "number" && typeof priceMax === "number" && priceMin && priceMax) {
+            if (priceMin !== priceMax) return `${formatPrice(priceMin, "IDR")} - ${formatPrice(priceMax, "IDR")}`;
+            return formatPrice(priceMin, "IDR");
+          }
+          return typeof price === "number" ? formatPrice(price, "IDR") : String(price ?? "");
+        })();
+
+        const promoText = (() => {
+          if (typeof compareAtMin === "number" && typeof compareAtMax === "number" && compareAtMin && compareAtMax) {
+            if (compareAtMin !== compareAtMax) return `${formatPrice(compareAtMin, "IDR")} - ${formatPrice(compareAtMax, "IDR")}`;
+            return formatPrice(compareAtMin, "IDR");
+          }
+          const originalPrice = p?.originalPrice as number | undefined;
+          return typeof originalPrice === "number" ? formatPrice(originalPrice, "IDR") : undefined;
+        })();
+
         return (
-          <div className="flex items-center space-x-1">
-            <DollarSign className="h-3 w-3 text-muted-foreground" />
-            <span className="font-medium">{formatPrice(price)}</span>
+          <div className="w-48 text-right">
+            <div className="font-medium">{sellText}</div>
+            {promoText ? (
+              <div className="text-xs text-muted-foreground">Promosi: {promoText}</div>
+            ) : null}
           </div>
         );
       },
-      enableColumnFilter: true,
-      filterFn: "inNumberRange",
       meta: {
+        label: "Price",
         variant: "range",
-        range: [priceRange?.min || 0, priceRange?.max || 1000],
-      },
-    },
-    {
-      accessorKey: "downloadCount",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          Downloads
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      cell: ({ row }) => {
-        const downloads = row.getValue("downloadCount") as number;
-        return (
-          <div className="flex items-center space-x-1">
-            <Download className="h-3 w-3 text-muted-foreground" />
-            <span className="font-medium">{downloads.toLocaleString()}</span>
-          </div>
-        );
+        range: [priceRange.min, priceRange.max],
+        unit: "",
+        icon: DollarSign,
       },
       enableColumnFilter: true,
       filterFn: "inNumberRange",
-      meta: {
-        variant: "range",
-      },
     },
     {
+      id: "isActive",
       accessorKey: "isActive",
-      header: "Status",
-      cell: ({ row }) => {
-        const isActive = row.getValue("isActive") as boolean;
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ cell }) => {
+        const isActive = cell.getValue<boolean>();
+        const Icon = isActive ? CheckCircle2 : XCircle;
         return (
-          <Badge variant={isActive ? "default" : "secondary"}>
-            {isActive ? (
-              <CheckCircle2 className="mr-1 h-3 w-3" />
-            ) : (
-              <XCircle className="mr-1 h-3 w-3" />
-            )}
-            {isActive ? "Active" : "Inactive"}
+          <Badge variant={isActive ? "default" : "outline"} className="py-1 [&>svg]:size-3.5">
+            <Icon />
+            <span className="ml-1">{isActive ? "Active" : "Inactive"}</span>
           </Badge>
         );
       },
+      meta: {
+        label: "Status",
+        variant: "multiSelect",
+        options: [
+          { label: "Active", value: "true", count: statusCounts.active, icon: CheckCircle2 },
+          { label: "Inactive", value: "false", count: statusCounts.inactive, icon: XCircle },
+        ],
+        icon: ArrowUpDown,
+      },
       enableColumnFilter: true,
       filterFn: "arrIncludesSome",
-      meta: {
-        variant: "select",
-        options: [
-          {
-            label: "Active",
-            value: "true",
-            count: statusCounts?.active || 0,
-          },
-          {
-            label: "Inactive",
-            value: "false",
-            count: statusCounts?.inactive || 0,
-          },
-        ],
-      },
     },
     {
+      id: "createdAt",
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="h-8 px-2 lg:px-3"
-        >
-          Created
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <DataTableColumnHeader column={column} title="Created At" />
       ),
-      cell: ({ row }) => {
-        const dateValue = row.getValue("createdAt");
-        const date = dateValue ? new Date(dateValue as string) : null;
-        return (
-          <div className="text-sm text-muted-foreground">
-            {date ? date.toLocaleDateString() : '-'}
-          </div>
-        );
+      cell: ({ cell }) => {
+        const date = cell.getValue<Date | string>();
+        const d = typeof date === "string" ? new Date(date) : date;
+        return <div className="w-40">{d ? d.toLocaleDateString() : ""}</div>;
       },
-      enableColumnFilter: true,
-      filterFn: "inDateRange",
-      meta: {
-        variant: "dateRange",
-      },
+      enableColumnFilter: false,
+      enableSorting: true,
     },
     {
       id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const product = row.original;
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem
-                onClick={() => {
-                  navigator.clipboard.writeText(product.id);
-                  toast.success("Product ID copied to clipboard");
-                }}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/products/${product.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View details
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/products/${product.id}/edit`}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/admin/products/${product.id}/delete`} className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      header: () => null,
+      cell: () => null,
       enableSorting: false,
       enableHiding: false,
       size: 40,

@@ -11,31 +11,81 @@ import {
   eq,
   ilike,
   inArray,
-  leftJoin, // Added leftJoin
+  // leftJoin, // Removed invalid import
   sql,
 } from "drizzle-orm";
 
 import { buildFilterWhere } from "@/lib/filter-columns";
 import { unstable_cache } from "next/cache";
 
-import { categoriesSearchParamsCache } from "@/lib/search-params";
-import type { GetCategoriesSchema } from "./validations";
+// removed unused import categoriesSearchParamsCache
+import type { GetCategoriesSchema } from "@/app/_lib/validations/categories";
+import type { PgColumn } from "drizzle-orm/pg-core";
+import type { AnyColumn } from "drizzle-orm";
 
 export async function getCategories(input: GetCategoriesSchema) {
   return await unstable_cache(
     async () => {
       try {
-        const offset = (input.page - 1) * input.perPage;
+        const page = input.page ?? 1;
+        const perPage = input.per_page ?? 10;
+        const offset = (page - 1) * perPage;
         const advancedTable =
           input.filterFlag === "advancedFilters" ||
           input.filterFlag === "commandFilters";
 
+        const filterOperators = [
+          "eq",
+          "ne",
+          "ilike",
+          "notIlike",
+          "isNull",
+          "isNotNull",
+          "gte",
+          "lte",
+          "gt",
+          "lt",
+          "in",
+        ] as const;
+
+        type FilterOperatorLocal = typeof filterOperators[number];
+
+        function isFilterOperator(value: unknown): value is FilterOperatorLocal {
+          return (
+            typeof value === "string" &&
+            (filterOperators as readonly string[]).includes(value)
+          );
+        }
+
+        // Define explicit mapping of sortable columns to ensure correct typing for asc/desc
+        const sortableColumns: Record<string, AnyColumn> = {
+          id: categories.id,
+          name: categories.name,
+          slug: categories.slug,
+          isActive: categories.isActive,
+          sortOrder: categories.sortOrder,
+          createdAt: categories.createdAt,
+          updatedAt: categories.updatedAt,
+        };
+
         const advancedWhere = buildFilterWhere(
-          input.filters?.map(filter => ({
-            column: categories[filter.id as keyof typeof categories] as any,
-            value: filter.value,
-            operator: filter.operator as any,
-          })) || [],
+          input.filters?.length
+            ? ((input.filters.map((filter) => {
+                const column = categories[
+                  filter.id as keyof typeof categories
+                ] as unknown as PgColumn;
+                const operator: FilterOperatorLocal = isFilterOperator(
+                  filter.operator,
+                )
+                  ? filter.operator
+                  : "eq";
+                return {
+                  column,
+                  value: filter.value,
+                  operator,
+                };
+              })) as unknown as Parameters<typeof buildFilterWhere>[0])
+            : [],
           input.joinOperator,
         );
 
@@ -54,7 +104,7 @@ export async function getCategories(input: GetCategoriesSchema) {
         let orderBy;
         if (typeof input.sort === 'string' && input.sort.length > 0) {
           const [id, direction] = input.sort.split('.');
-          const sortField = categories[id as keyof typeof categories];
+          const sortField = sortableColumns[id];
           if (sortField) {
             orderBy = direction === 'desc' ? [desc(sortField)] : [asc(sortField)];
           } else {
@@ -63,9 +113,10 @@ export async function getCategories(input: GetCategoriesSchema) {
           }
         } else if (Array.isArray(input.sort) && input.sort.length > 0) {
           // This case handles if input.sort is already an array of objects (future-proofing)
-          orderBy = input.sort.map((item: { id: keyof typeof categories, desc: boolean }) =>
-            item.desc ? desc(categories[item.id]) : asc(categories[item.id])
-          );
+          orderBy = input.sort.map((item: { id: keyof typeof categories, desc: boolean }) => {
+            const col = sortableColumns[String(item.id)];
+            return item.desc && col ? desc(col) : asc(col ?? categories.sortOrder);
+          });
         } else {
           orderBy = [asc(categories.sortOrder), asc(categories.name)];
         }
@@ -85,8 +136,8 @@ export async function getCategories(input: GetCategoriesSchema) {
               productCount: countDistinct(products.id), // Added productCount
             })
             .from(categories)
-            .leftJoin(products, eq(products.categoryId, categories.id)) // Added leftJoin
-            .limit(input.perPage)
+            .leftJoin(products, eq(products.categoryId, categories.id)) // Added leftJoin method on builder
+            .limit(perPage)
             .offset(offset)
             .where(where)
             .groupBy(
@@ -125,7 +176,7 @@ export async function getCategories(input: GetCategoriesSchema) {
         // });
 
 
-        const pageCount = Math.ceil(total / input.perPage);
+        const pageCount = Math.ceil(total / perPage);
         return { data, pageCount };
       } catch (err) {
         console.error("Error fetching categories:", err);
@@ -216,10 +267,10 @@ export async function getCategoryById(id: string) {
         return null;
       }
     },
-    [`category-${id}`],
+    ["category-by-id", id],
     {
-      revalidate: 3600, // 1 hour
-      tags: ["categories", `category-${id}`],
+      revalidate: 3600,
+      tags: ["categories"],
     },
   )();
 }

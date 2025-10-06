@@ -27,11 +27,11 @@ interface Order {
   userId: string | null;
   userName: string | null;
   userEmail: string | null;
-  status: "pending" | "processing" | "completed" | "cancelled" | "refunded";
+  status: string;
   totalAmount: string;
   currency: string;
   paymentMethod: string | null;
-  paymentStatus: "pending" | "paid" | "failed" | "refunded";
+  paymentStatus: string;
   paymentId: string | null;
   notes: string | null;
   createdAt: Date;
@@ -44,8 +44,11 @@ const columns: ColumnDef<Order>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+              ? "indeterminate"
+              : false
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
@@ -159,8 +162,8 @@ const columns: ColumnDef<Order>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const order = row.original;
+    cell: () => {
+      // removed unused const order = row.original;
 
       return (
         <DropdownMenu>
@@ -202,28 +205,6 @@ export function OrderTable({ orders, pageCount }: OrderTableProps) {
     data: orders,
     columns,
     pageCount,
-    filterFields: [
-      {
-        label: "Customer",
-        value: "userName",
-        placeholder: "Filter customers...",
-      },
-      {
-        label: "Order Number",
-        value: "orderNumber",
-        placeholder: "Filter order numbers...",
-      },
-      {
-        label: "Status",
-        value: "status",
-        placeholder: "Filter status...",
-      },
-      {
-        label: "Payment Status",
-        value: "paymentStatus",
-        placeholder: "Filter payment status...",
-      },
-    ],
   });
 
   return (

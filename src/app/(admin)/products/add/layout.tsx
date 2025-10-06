@@ -1,12 +1,4 @@
-'use client';
-
-import * as React from "react";
-
-interface AddProductLayoutProps {
-  children: React.ReactNode;
-}
-
-export default function AddProductLayout({ children }: AddProductLayoutProps) {
+export default function AddProductLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {children}

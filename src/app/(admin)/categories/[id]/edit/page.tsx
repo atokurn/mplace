@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import type { FieldValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import type { ZodTypeAny } from "zod";
 
 import { Shell } from "@/app/_components/shared/layouts/shell";
 import { Button } from "@/components/ui/button";
@@ -26,20 +28,17 @@ import { updateCategorySchema, type UpdateCategorySchema } from "@/app/_lib/vali
 import { updateCategory } from "@/app/_lib/actions/categories";
 import { getCategoryById } from "@/app/_lib/queries/categories";
 
-interface EditCategoryPageProps {
-  params: {
-    id: string;
-  };
-}
+// Removed EditCategoryPageProps in favor of using useParams in a Client Component
 
-export default function EditCategoryPage({ params }: EditCategoryPageProps) {
+export default function EditCategoryPage() {
   const router = useRouter();
+  const { id } = useParams<{ id: string }>();
+
   const [isLoading, setIsLoading] = React.useState(false);
   const [isLoadingData, setIsLoadingData] = React.useState(true);
-  const [category, setCategory] = React.useState<any>(null);
 
   const form = useForm<UpdateCategorySchema>({
-    resolver: zodResolver(updateCategorySchema),
+    resolver: zodResolver(updateCategorySchema as unknown as ZodTypeAny),
     defaultValues: {
       name: "",
       description: "",
@@ -52,10 +51,15 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
   // Load category data
   React.useEffect(() => {
     async function loadCategory() {
+      if (!id) {
+        toast.error("Invalid category id");
+        router.push("/admin/categories");
+        return;
+      }
       try {
-        const result = await getCategoryById(params.id);
+        const result = await getCategoryById(id);
         if (result) {
-          setCategory(result);
+          // category state removed
           form.reset({
             name: result.name || "",
             description: result.description || "",
@@ -77,19 +81,23 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     }
 
     loadCategory();
-  }, [params.id, form, router]);
+  }, [id, form, router]);
 
   async function onSubmit(data: UpdateCategorySchema) {
+    if (!id) {
+      toast.error("Invalid category id");
+      return;
+    }
     setIsLoading(true);
     try {
-      const result = await updateCategory(params.id, data);
+      const result = await updateCategory({ id, ...data });
       
-      if (result.success) {
+      if (!result.error) {
         toast.success("Category updated successfully");
         router.push("/admin/categories");
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to update category");
+        toast.error(result.error || "Failed to update category");
       }
     } catch (error) {
       toast.error("An unexpected error occurred");
@@ -175,7 +183,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
+                <FormField<FieldValues, "name">
                   control={form.control}
                   name="name"
                   render={({ field }) => (
@@ -192,7 +200,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                   )}
                 />
 
-                <FormField
+                <FormField<FieldValues, "description">
                   control={form.control}
                   name="description"
                   render={({ field }) => (
@@ -213,7 +221,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                   )}
                 />
 
-                <FormField
+                <FormField<FieldValues, "imageUrl">
                   control={form.control}
                   name="imageUrl"
                   render={({ field }) => (
@@ -234,7 +242,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                   )}
                 />
 
-                <FormField
+                <FormField<FieldValues, "sortOrder">
                   control={form.control}
                   name="sortOrder"
                   render={({ field }) => (
@@ -257,7 +265,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                   )}
                 />
 
-                <FormField
+                <FormField<FieldValues, "isActive">
                   control={form.control}
                   name="isActive"
                   render={({ field }) => (

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import type { SearchParams } from "@/types";
 
 import { ProductTableServer } from "@/app/_components/features/admin/products/ProductTableServer";
-import { productsSearchParamsCache } from "@/lib/search-params";
+// removed unused import productsSearchParamsCache
 
 interface ProductsPageProps {
   searchParams: Promise<SearchParams>;

@@ -29,8 +29,6 @@ export function DataTableSkeleton({
   withViewOptions = true,
   withPagination = true,
   shrinkZero = false,
-  searchableColumnCount,
-  filterableColumnCount,
   className,
   ...props
 }: DataTableSkeletonProps) {

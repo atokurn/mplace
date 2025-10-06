@@ -233,15 +233,17 @@ function FacetedItem(props: FacetedItemProps) {
     ? Array.isArray(context.value) && context.value.includes(value)
     : context.value === value;
 
+  const { onItemSelect: ctxOnItemSelect } = context;
+
   const onItemSelect = React.useCallback(
     (currentValue: string) => {
       if (onSelect) {
         onSelect(currentValue);
-      } else if (context.onItemSelect) {
-        context.onItemSelect(currentValue);
+      } else if (ctxOnItemSelect) {
+        ctxOnItemSelect(currentValue);
       }
     },
-    [onSelect, context.onItemSelect],
+    [onSelect, ctxOnItemSelect],
   );
 
   return (

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Github } from 'lucide-react';
 import Link from 'next/link';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const LoginPage = () => {
   const { t } = useLanguage();
   const router = useRouter();
-  const { data: session } = useSession();
+  // Removed unused session retrieval
   const [formData, setFormData] = useState({
     email: '',
     password: '',

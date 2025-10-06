@@ -7,13 +7,14 @@ import Link from 'next/link';
 import { getProductById } from '@/app/_lib/queries/products';
 
 interface EditProductPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function EditProductPage({ params }: EditProductPageProps) {
-  const product = await getProductById(params.id);
+  const { id } = await params;
+  const product = await getProductById(id);
 
   if (!product) {
     notFound();

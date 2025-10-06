@@ -40,8 +40,9 @@ export function DataTableFacetedFilter<TData, TValue>({
   const [open, setOpen] = React.useState(false);
 
   const columnFilterValue = column?.getFilterValue();
-  const selectedValues = new Set(
-    Array.isArray(columnFilterValue) ? columnFilterValue : [],
+  const selectedValues = React.useMemo(
+    () => new Set(Array.isArray(columnFilterValue) ? columnFilterValue : []),
+    [columnFilterValue],
   );
 
   const onItemSelect = React.useCallback(
@@ -145,38 +146,30 @@ export function DataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        "flex size-4 items-center justify-center rounded-sm border border-primary",
+                        "mr-2 flex size-4 items-center justify-center rounded-sm border border-primary",
                         isSelected
-                          ? "bg-primary"
+                          ? "bg-primary text-primary-foreground"
                           : "opacity-50 [&_svg]:invisible",
                       )}
                     >
-                      <Check />
+                      <Check className="size-4" />
                     </div>
-                    {option.icon && <option.icon />}
-                    <span className="truncate">{option.label}</span>
-                    {option.count && (
-                      <span className="ml-auto font-mono text-xs">
-                        {option.count}
-                      </span>
-                    )}
+                    <span>{option.label}</span>
                   </CommandItem>
                 );
               })}
             </CommandGroup>
-            {selectedValues.size > 0 && (
+            {selectedValues.size > 0 ? (
               <>
                 <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => onReset()}
-                    className="justify-center text-center"
-                  >
-                    Clear filters
-                  </CommandItem>
-                </CommandGroup>
+                <CommandItem
+                  onSelect={() => onReset()}
+                  className="justify-center text-center"
+                >
+                  Clear filters
+                </CommandItem>
               </>
-            )}
+            ) : null}
           </CommandList>
         </Command>
       </PopoverContent>

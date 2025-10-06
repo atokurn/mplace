@@ -6,23 +6,23 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  Users,
   BarChart3,
   Settings,
-  FolderOpen,
   Command,
   LifeBuoy,
   Send,
+  BadgePercent,
+  Banknote,
 } from "lucide-react"
 
 import { NavMain } from "@/app/_components/shared/navigation/nav-main"
 import { NavProjects } from "@/app/_components/shared/navigation/nav-projects"
 import { NavSecondary } from "@/app/_components/shared/navigation/nav-secondary"
-import { NavUser } from "@/app/_components/shared/navigation/nav-user"
+// Removed NavUser import
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
+  // SidebarFooter, // removed
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -43,24 +43,29 @@ const data = {
       isActive: true,
     },
     {
+      title: "Orders",
+      url: "#",
+      icon: ShoppingCart,
+      items: [
+        { title: "Manage orders", url: "/orders" },
+        { title: "Manage returns", url: "/orders/returns" },
+        { title: "Shipping settings", url: "/orders/shipping-settings" },
+        { title: "Fulfillment settings", url: "/orders/fulfillment-settings" },
+      ],
+    },
+    {
       title: "Products",
       url: "/products",
       icon: Package,
+      items: [
+        { title: "Manage products", url: "/products" },
+        { title: "Manage categories", url: "/categories" },
+      ],
     },
     {
-      title: "Categories",
-      url: "/categories",
-      icon: FolderOpen,
-    },
-    {
-      title: "Orders",
-      url: "/orders",
-      icon: ShoppingCart,
-    },
-    {
-      title: "Users",
-      url: "/users",
-      icon: Users,
+      title: "Promotions",
+      url: "/promotions",
+      icon: BadgePercent,
     },
     {
       title: "Analytics",
@@ -68,12 +73,20 @@ const data = {
       icon: BarChart3,
     },
     {
+      title: "Finance",
+      url: "/finance",
+      icon: Banknote,
+      items: [
+        { title: "Transactions", url: "/finance/transactions" },
+      ],
+    },
+  ],
+  navSecondary: [
+    {
       title: "Settings",
       url: "/settings",
       icon: Settings,
     },
-  ],
-  navSecondary: [
     {
       title: "Support",
       url: "#",
@@ -116,9 +129,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {data.projects.length > 0 && <NavProjects projects={data.projects} />}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
+      {/* Footer removed */}
     </Sidebar>
   )
 }

@@ -28,10 +28,6 @@ export interface Product {
   category: string;
   tags: string[];
   imageUrl: string;
-  fileUrl: string;
-  fileName: string;
-  fileSize: number;
-  downloadCount: number;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -86,13 +82,13 @@ export interface OrderItem {
 }
 
 // API Response types
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   message?: string;
 }
 
-export interface PaginatedResponse<T = any> {
+export interface PaginatedResponse<T = unknown> {
   data: T[];
   pagination: {
     page: number;
@@ -122,9 +118,6 @@ export interface ProductForm {
   category: string;
   tags: string[];
   imageUrl: string;
-  fileUrl: string;
-  fileName: string;
-  fileSize: number;
   isActive: boolean;
 }
 

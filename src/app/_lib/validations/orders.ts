@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const searchParamsSchemaOrders = ordersSearchParamsCache
 
-export type GetOrdersSchema = z.infer<typeof searchParamsSchemaOrders>
+export type GetOrdersSchema = Awaited<ReturnType<typeof ordersSearchParamsCache.parse>>
 
 export const createOrderSchema = z.object({
   userId: z.string(),

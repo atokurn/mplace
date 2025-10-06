@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Github, Check } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Github } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import { useLanguage } from '@/contexts/LanguageContext';

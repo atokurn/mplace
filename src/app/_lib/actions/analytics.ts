@@ -5,10 +5,10 @@ import { analyticsEvents } from "@/lib/db/schema"
 import { handleError } from "@/lib/handle-error"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
-import { and, eq, inArray } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 
 const createAnalyticsEventSchema = z.object({
-  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search", "download"]),
+  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search"]),
   userId: z.string().optional(),
   sessionId: z.string(),
   metadata: z.record(z.any()).optional(),
@@ -23,7 +23,7 @@ const deleteAnalyticsEventsSchema = z.object({
 })
 
 const updateAnalyticsEventSchema = z.object({
-  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search", "download"]).optional(),
+  eventType: z.enum(["page_view", "product_view", "add_to_cart", "purchase", "search"]).optional(),
   metadata: z.record(z.any()).optional(),
 })
 
@@ -76,7 +76,6 @@ export async function updateAnalyticsEvent(input: { id: string } & z.infer<typeo
       .update(analyticsEvents)
       .set({
         ...data,
-        updatedAt: new Date(),
       })
       .where(eq(analyticsEvents.id, id))
       .returning()

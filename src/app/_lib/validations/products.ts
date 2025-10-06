@@ -1,20 +1,19 @@
-"use server";
 import { z } from "zod";
-import { insertProductSchema } from "@/lib/db/schema";
 
 // Search params type for products
 export type GetProductsSchema = {
-  page?: number;
-  perPage?: number;
+  page: number;
+  perPage: number;
   sort?: string;
   title?: string;
   category?: string | string[];
   price?: string[];
   status?: string[];
   isActive?: string[];
+  tags?: string[];
   filters?: Array<{
     id: string;
-    value: any;
+    value: unknown;
     operator?: string;
   }>;
   joinOperator?: 'and' | 'or';
@@ -22,17 +21,7 @@ export type GetProductsSchema = {
   operator?: 'and' | 'or';
 };
 
-export const createProductSchema = insertProductSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  createdBy: true,
-  downloadCount: true,
-  viewCount: true,
-  likeCount: true,
-  reviewCount: true,
-  rating: true,
-}).extend({
+export const createProductSchema = z.object({
   // Core product information
   title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
   description: z.string().min(1, "Description is required").max(2000, "Description must be less than 2000 characters"),
@@ -41,6 +30,7 @@ export const createProductSchema = insertProductSchema.omit({
   // Pricing
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid price"),
   originalPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid original price").optional(),
+  // removed commercialPrice
   
   // Category and classification
   categoryId: z.string().uuid("Invalid category ID").optional().nullable(),
@@ -52,18 +42,16 @@ export const createProductSchema = insertProductSchema.omit({
   thumbnailUrl: z.string().url("Invalid thumbnail URL").optional(),
   previewImages: z.array(z.string().url("Invalid preview image URL")).default([]),
   
-  // Product files
-  fileUrl: z.string().url("Invalid file URL"),
-  fileName: z.string().min(1, "File name is required").max(255, "File name must be less than 255 characters"),
-  fileSize: z.number().min(1, "File size must be greater than 0"),
-  fileFormat: z.string().min(1, "File format is required"),
-  fileType: z.enum(['digital', 'template', 'font', 'vector']).default('digital'),
-  
-  // Product specifications
-  dimensions: z.string().optional(),
-  resolution: z.string().optional(),
-  colorMode: z.string().optional(),
-  software: z.array(z.string()).default([]),
+  // Physical product fields (digital-only fields removed)
+  isPhysical: z.boolean().default(true),
+  requiresShipping: z.boolean().default(true),
+  weightGrams: z.number().int().positive().optional(),
+  lengthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid length").optional(),
+  widthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid width").optional(),
+  heightCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid height").optional(),
+  brand: z.string().max(100).optional(),
+  barcode: z.string().max(64).optional(),
+  material: z.string().max(100).optional(),
   
   // SEO fields
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
@@ -77,9 +65,7 @@ export const createProductSchema = insertProductSchema.omit({
   isNew: z.boolean().optional().default(true),
   isBestseller: z.boolean().optional().default(false),
   
-  // Licensing
-  licenseType: z.enum(['standard', 'extended', 'commercial']).default('standard'),
-  usageRights: z.array(z.string()).default([]),
+  // removed Licensing (licenseType, usageRights)
   
   // Publishing
   publishedAt: z.date().optional(),

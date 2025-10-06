@@ -20,3 +20,8 @@ export function showErrorToast(err: unknown) {
   const errorMessage = getErrorMessage(err);
   return toast.error(errorMessage);
 }
+
+// Standard action error helper used in server actions
+export function handleError(err: unknown) {
+  return { data: null, error: getErrorMessage(err) } as const;
+}

@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import type { SearchParams } from "@/types";
 
 interface CategoriesPageProps {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }
 
-export default function CategoriesPage({ searchParams }: CategoriesPageProps) {
+export default async function CategoriesPage({ searchParams }: CategoriesPageProps) {
+  const resolved = await searchParams;
   return (
     <Shell variant="sidebar">
       <div className="space-y-6">
@@ -28,7 +29,7 @@ export default function CategoriesPage({ searchParams }: CategoriesPageProps) {
             </Link>
           </Button>
         </div>
-        <CategoryTableServer searchParams={searchParams} />
+        <CategoryTableServer searchParams={resolved} />
       </div>
     </Shell>
   );

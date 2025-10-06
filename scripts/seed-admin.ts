@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { eq } from 'drizzle-orm';
-import { users } from '../src/lib/db/schema.ts';
+import { users } from '../src/lib/db/schema';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 
@@ -10,7 +10,11 @@ dotenv.config({ path: '.env.local' });
 async function seedAdmin() {
   try {
     // Initialize database connection
-    const sql = neon(process.env.DATABASE_URL);
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL is not set in environment variables');
+    }
+    const sql = neon(databaseUrl);
     const db = drizzle(sql);
 
     // Get admin credentials from environment
