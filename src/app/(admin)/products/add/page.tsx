@@ -13,6 +13,10 @@ import {
   VariantsEditor,
 } from "@/app/_components/features/admin/products/add";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createProduct } from "@/app/_lib/actions/products";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { slugify } from "@/lib/utils/slug";
 
 // Local types aligned with VariantsEditor
 interface VariantOption {
@@ -52,6 +56,23 @@ export default function AddProductPage() {
   const [previewCategory, setPreviewCategory] = React.useState<string>("");
   const [previewImage, setPreviewImage] = React.useState<string>("");
   const [previewTags] = React.useState<string[]>([]);
+  // New states for gallery and SEO
+  const [previewImages, setPreviewImages] = React.useState<string[]>([]);
+  const [shortDescription, setShortDescription] = React.useState<string | undefined>(undefined);
+  const [metaTitle, setMetaTitle] = React.useState<string | undefined>(undefined);
+  const [metaDescription, setMetaDescription] = React.useState<string | undefined>(undefined);
+
+  // New state wired to non-visual callbacks
+  const [selectedCategoryId, setSelectedCategoryId] = React.useState<string>("");
+  const [mainImageFile, setMainImageFile] = React.useState<File | null>(null);
+  const [description, setDescription] = React.useState<string>("");
+
+  // Shipping state (product-level)
+  const [packageWeightUnit, setPackageWeightUnit] = React.useState<"g" | "kg">("g");
+  const [packageWeight, setPackageWeight] = React.useState<number | null>(null);
+  const [packageHeightCm, setPackageHeightCm] = React.useState<string>("");
+  const [packageWidthCm, setPackageWidthCm] = React.useState<string>("");
+  const [packageLengthCm, setPackageLengthCm] = React.useState<string>("");
 
   // Sales Info state
   const [addVariant, setAddVariant] = React.useState<boolean>(false);
@@ -85,6 +106,18 @@ export default function AddProductPage() {
 
   const handleDefaultPriceChange = (value: string) => setDefaultPrice(value);
   const handleDefaultQuantityChange = (value: string) => setDefaultQuantity(value);
+
+  // Handlers for non-visual callbacks
+  const handleSelectedCategoryIdChange = (id: string) => setSelectedCategoryId(id);
+  const handleMainImageFileChange = (file: File) => setMainImageFile(file);
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    const trimmed = value.trim();
+    const short = trimmed.length > 160 ? trimmed.slice(0, 160) : trimmed;
+    setShortDescription(short || undefined);
+    const metaDesc = trimmed.length > 160 ? trimmed.slice(0, 160) : trimmed;
+    setMetaDescription(metaDesc || undefined);
+  };
 
   // Utility: generate cartesian product combinations
   const generateVariantCombinations = (variantItems: VariantItem[]) => {
@@ -251,9 +284,126 @@ export default function AddProductPage() {
     console.log('Saving draft...');
   };
 
-  const handleSubmit = () => {
-    // TODO: Implement submit logic
-    console.log('Submitting product...');
+  const router = useRouter();
+
+
+
+  const handleSubmit = async () => {
+    // Validations
+    if (!previewTitle.trim()) {
+      toast.error("Judul produk wajib diisi");
+      return;
+    }
+    if (!previewCategory.trim()) {
+      toast.error("Kategori wajib dipilih");
+      return;
+    }
+    if (!description.trim()) {
+      toast.error("Deskripsi wajib diisi");
+      return;
+    }
+    if (!mainImageFile) {
+      toast.error("Gambar utama wajib diunggah");
+      return;
+    }
+    // Harga: tergantung mode varian
+    if (!addVariant) {
+      if (!defaultPrice.trim()) {
+        toast.error("Harga wajib diisi");
+        return;
+      }
+    } else {
+      if (variantTableData.length === 0) {
+        toast.error("Tambahkan varian dan isi harga untuk setiap kombinasi");
+        return;
+      }
+      const allPricesFilled = variantTableData.every((c) => c.price && c.price.trim() !== "");
+      if (!allPricesFilled) {
+        toast.error("Harga wajib diisi untuk semua varian");
+        return;
+      }
+    }
+
+    try {
+      // Upload main image
+      const fd = new FormData();
+      fd.append("file", mainImageFile);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        let errMsg = "Gagal mengunggah gambar";
+        try {
+          const errJson = await res.json();
+          errMsg = errJson?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+      const upload = await res.json();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const imageUrlAbs = origin ? `${origin}${upload.url}` : upload.url;
+
+      const slug = slugify(previewTitle);
+      const weightGrams = packageWeight != null
+        ? (packageWeightUnit === "kg" ? Math.round(packageWeight * 1000) : Math.round(packageWeight))
+        : undefined;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const categoryIdVal = selectedCategoryId && uuidRegex.test(selectedCategoryId) ? selectedCategoryId : null;
+
+      // Turunkan harga produk dari varian (minimal), bila varian aktif
+      const variantPrices = addVariant
+        ? variantTableData
+            .map((c) => Number(c.price))
+            .filter((p) => !Number.isNaN(p) && p >= 0)
+        : [];
+      const priceForPayload = !addVariant
+        ? defaultPrice
+        : String(variantPrices.length ? Math.min(...variantPrices) : 0);
+
+      const payload = {
+        title: previewTitle,
+        description,
+        shortDescription,
+        price: priceForPayload,
+        originalPrice: undefined,
+        categoryId: categoryIdVal,
+        category: previewCategory,
+        tags: [],
+        imageUrl: imageUrlAbs,
+        thumbnailUrl: undefined,
+        previewImages,
+        isPhysical: true,
+        requiresShipping: true,
+        weightGrams,
+        lengthCm: packageLengthCm || undefined,
+        widthCm: packageWidthCm || undefined,
+        heightCm: packageHeightCm || undefined,
+        brand: undefined,
+        barcode: undefined,
+        material: undefined,
+        slug: slug,
+        metaTitle,
+        metaDescription,
+        keywords: [],
+        isActive: true,
+        isFeatured: false,
+        isNew: true,
+        isBestseller: false,
+        publishedAt: undefined,
+      } as const;
+
+      const result = await createProduct(payload as any);
+      if (result.data && !result.error) {
+        toast.success("Produk berhasil dibuat");
+        router.push("/products");
+        router.refresh();
+      } else {
+        toast.error(result.error || "Gagal membuat produk");
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Terjadi kesalahan saat menyimpan");
+      // eslint-disable-next-line no-console
+      console.error("Error creating product:", error);
+    }
   };
 
   return (
@@ -265,8 +415,16 @@ export default function AddProductPage() {
             <NavCard sections={sections} previewTitle={previewTitle} previewCategory={previewCategory} previewImage={previewImage} previewTags={previewTags} />
           </div>
           <div className="lg:col-span-8 space-y-6">
-            <BasicInfoCard onPreviewTitleChange={setPreviewTitle} onPreviewCategoryChange={setPreviewCategory} onPreviewImageChange={setPreviewImage} />
-            <DetailProductCard />
+            <BasicInfoCard
+              onPreviewTitleChange={setPreviewTitle}
+              onPreviewCategoryChange={setPreviewCategory}
+              onPreviewImageChange={(url) => setPreviewImage(url)}
+              onSelectedCategoryIdChange={handleSelectedCategoryIdChange}
+              onMainImageFileChange={handleMainImageFileChange}
+              onPreviewImagesChange={(urls) => setPreviewImages(urls)}
+              onMetaTitleChange={(t) => setMetaTitle(t || undefined)}
+            />
+            <DetailProductCard onDescriptionChange={handleDescriptionChange} />
             {/* <CostPriceCard /> */}
             {/* Sales Info and Variants */}
             <Card id="sales" className="rounded-lg border bg-background">
@@ -299,7 +457,11 @@ export default function AddProductPage() {
                 />
               </CardContent>
             </Card>
-            <ShippingCard addVariant={addVariant} />
+            <ShippingCard addVariant={addVariant} onWeightUnitChange={setPackageWeightUnit} onWeightChange={(w) => setPackageWeight(w)} onDimensionsChange={({ heightCm, widthCm, lengthCm }) => {
+              if (heightCm !== undefined) setPackageHeightCm(heightCm);
+              if (widthCm !== undefined) setPackageWidthCm(widthCm);
+              if (lengthCm !== undefined) setPackageLengthCm(lengthCm);
+            }} />
           </div>
         </div>
       </div>

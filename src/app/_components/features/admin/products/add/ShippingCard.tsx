@@ -14,10 +14,14 @@ import { HelpCircle } from "lucide-react";
 type ShippingSectionProps = {
   id?: string;
   addVariant?: boolean;
+  onWeightUnitChange?: (unit: "g" | "kg") => void;
+  onWeightChange?: (weight: number) => void;
+  onDimensionsChange?: (dims: { heightCm?: string; widthCm?: string; lengthCm?: string }) => void;
 };
 
-const ShippingSection = forwardRef<HTMLDivElement, ShippingSectionProps>(({ id, addVariant = false }, ref) => {
+const ShippingSection = forwardRef<HTMLDivElement, ShippingSectionProps>(({ id, addVariant = false, onWeightUnitChange, onWeightChange, onDimensionsChange }, ref) => {
   const [shippingMode, setShippingMode] = useState<"default" | "kustom">("default");
+  const [weightUnit, setWeightUnit] = useState<"g" | "kg">("g");
 
   return (
     <Card ref={ref} id={id}>
@@ -42,7 +46,11 @@ const ShippingSection = forwardRef<HTMLDivElement, ShippingSectionProps>(({ id, 
               </TooltipProvider>
             </Label>
             <div className="flex items-center gap-2">
-              <Select defaultValue="g">
+              <Select value={weightUnit} onValueChange={(val) => {
+                const unit = (val as "g" | "kg");
+                setWeightUnit(unit);
+                onWeightUnitChange?.(unit);
+              }}>
                 <SelectTrigger id="weight-unit" className="w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -51,7 +59,10 @@ const ShippingSection = forwardRef<HTMLDivElement, ShippingSectionProps>(({ id, 
                   <SelectItem value="kg">Kilogram (kg)</SelectItem>
                 </SelectContent>
               </Select>
-              <Input id="package-weight" type="number" placeholder="Masukkan berat paket" className="flex-1" />
+              <Input id="package-weight" type="number" placeholder="Masukkan berat paket" className="flex-1" onChange={(e) => {
+                const w = parseFloat(e.target.value);
+                if (!Number.isNaN(w)) onWeightChange?.(w);
+              }} />
             </div>
           </div>
         )}
@@ -74,15 +85,15 @@ const ShippingSection = forwardRef<HTMLDivElement, ShippingSectionProps>(({ id, 
           <p className="text-xs text-muted-foreground">Pastikan berat dan dimensi kotak akurat karena akan digunakan untuk menghitung biaya pengiriman dan metode pengiriman.</p>
           <div className="grid grid-cols-3 gap-4">
             <div className="relative">
-              <Input id="package-height" type="number" placeholder="Tinggi" className="pr-10" />
+              <Input id="package-height" type="number" placeholder="Tinggi" className="pr-10" onChange={(e) => onDimensionsChange?.({ heightCm: e.target.value })} />
               <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-muted-foreground">cm</span>
             </div>
             <div className="relative">
-              <Input id="package-width" type="number" placeholder="Lebar" className="pr-10" />
+              <Input id="package-width" type="number" placeholder="Lebar" className="pr-10" onChange={(e) => onDimensionsChange?.({ widthCm: e.target.value })} />
               <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-muted-foreground">cm</span>
             </div>
             <div className="relative">
-              <Input id="package-length" type="number" placeholder="Panjang" className="pr-10" />
+              <Input id="package-length" type="number" placeholder="Panjang" className="pr-10" onChange={(e) => onDimensionsChange?.({ lengthCm: e.target.value })} />
               <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-sm text-muted-foreground">cm</span>
             </div>
           </div>

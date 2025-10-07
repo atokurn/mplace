@@ -18,9 +18,14 @@ interface BasicInfoCardProps {
   onPreviewTitleChange?: (title: string) => void;
   onPreviewCategoryChange?: (category: string) => void;
   onPreviewImageChange?: (url: string) => void;
+  onSelectedCategoryIdChange?: (id: string) => void;
+  onMainImageFileChange?: (file: File) => void;
+  // Non-visual callbacks
+  onPreviewImagesChange?: (urls: string[]) => void;
+  onMetaTitleChange?: (metaTitle: string) => void;
 }
 
-export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryChange, onPreviewImageChange }: BasicInfoCardProps) {
+export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryChange, onPreviewImageChange, onSelectedCategoryIdChange, onMainImageFileChange, onPreviewImagesChange, onMetaTitleChange }: BasicInfoCardProps) {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   useEffect(() => {
@@ -59,6 +64,10 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
   const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
   const [isDraggingMain, setIsDraggingMain] = useState<boolean>(false);
   const [additionalImagePreviews, setAdditionalImagePreviews] = useState<Record<string, string | null>>(
+    () => Object.fromEntries(labels.map((l) => [l, null]))
+  );
+  // Track uploaded remote URLs corresponding to additional image tiles
+  const [additionalImageRemoteUrls, setAdditionalImageRemoteUrls] = useState<Record<string, string | null>>(
     () => Object.fromEntries(labels.map((l) => [l, null]))
   );
   const [isDraggingAdditional, setIsDraggingAdditional] = useState<string | null>(null);
@@ -119,6 +128,19 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
       return ns;
     });
 
+    // Sinkronkan remote URL mapping jika reorder antar tiles tambahan
+    if (fromKey !== "__main__" && toKey !== "__main__") {
+      setAdditionalImageRemoteUrls((prev) => {
+        const next = { ...prev };
+        const tmp = next[fromKey] ?? null;
+        next[fromKey] = next[toKey] ?? null;
+        next[toKey] = tmp;
+        // Update parent dengan urutan terbaru
+        onPreviewImagesChange?.(labels.map((l) => next[l]).filter((u): u is string => !!u));
+        return next;
+      });
+    }
+
     // Sinkronkan external preview jika gambar utama berubah karena reorder
     if (newMain !== mainImagePreview) {
       onPreviewImageChange?.(newMain || "");
@@ -145,6 +167,7 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
     // Jangan revoke ObjectURL lama saat upload; bisa masih dipakai di tile lain setelah reorder
     setMainImagePreview(url);
     onPreviewImageChange?.(url);
+    onMainImageFileChange?.(file);
   };
 
   const isUrlInUse = (url: string, exceptKey?: string): boolean => {
@@ -204,6 +227,34 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
     if (fromKey) swapPreviews(fromKey, "__main__");
   };
 
+  // Upload image to server and store remote URL for the given tile label (scoped inside component)
+  const uploadAdditionalImage = async (label: string, file: File) => {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        let errMsg = "Gagal mengunggah gambar tambahan";
+        try {
+          const errJson = await res.json();
+          errMsg = errJson?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+      const upload = await res.json();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const imageUrlAbs = origin ? `${origin}${upload.url}` : upload.url;
+      setAdditionalImageRemoteUrls((prev) => {
+        const next = { ...prev, [label]: imageUrlAbs };
+        // Push flattened list of URLs to parent (order by labels)
+        onPreviewImagesChange?.(labels.map((l) => next[l]).filter((u): u is string => !!u));
+        return next;
+      });
+      toast.success("Gambar tambahan diunggah");
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal mengunggah gambar tambahan");
+    }
+  };
   const onAdditionalImageChange = async (e: React.ChangeEvent<HTMLInputElement>, label: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -211,12 +262,20 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
     if (!url) return;
     // Jangan revoke langsung pada tile ini; URL lama mungkin dipakai di tempat lain setelah reorder
     setAdditionalImagePreviews((s) => ({ ...s, [label]: url }));
+    // Upload to server and notify parent with remote URL
+    await uploadAdditionalImage(label, file);
   };
 
   const onRemoveAdditionalImage = (label: string) => {
     const prev = additionalImagePreviews[label];
     if (prev && !isUrlInUse(prev, label)) URL.revokeObjectURL(prev);
     setAdditionalImagePreviews((s) => ({ ...s, [label]: null }));
+    // Also clear remote URL and update parent
+    setAdditionalImageRemoteUrls((prev) => {
+      const next = { ...prev, [label]: null };
+      onPreviewImagesChange?.(labels.map((l) => next[l]).filter((u): u is string => !!u));
+      return next;
+    });
   };
 
   const onDragEnterAdditional = (e: React.DragEvent, label: string) => {
@@ -243,6 +302,8 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
       if (!url) return;
       // Jangan revoke langsung; biarkan unmount cleanup
       setAdditionalImagePreviews((s) => ({ ...s, [label]: url }));
+      // Upload ke server dan kabari parent
+      await uploadAdditionalImage(label, file);
       return;
     }
 
@@ -370,7 +431,7 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
       {/* Product name */}
       <div>
         <Label className="text-sm font-medium">Nama produk</Label>
-        <Input placeholder="Contoh: T-shirt" className="bg-background border-border text-sm" onChange={(e) => onPreviewTitleChange?.(e.target.value)} />
+        <Input placeholder="Contoh: T-shirt" className="bg-background border-border text-sm" onChange={(e) => { onPreviewTitleChange?.(e.target.value); onMetaTitleChange?.(e.target.value); }} />
       </div>
 
       {/* Category */}
@@ -379,6 +440,7 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
         <Select onValueChange={(value) => {
           const selected = categories.find((cat) => cat.id === value);
           if (selected) onPreviewCategoryChange?.(selected.name);
+          onSelectedCategoryIdChange?.(value);
         }}>
           <SelectTrigger className="bg-background border-border w-full">
             <SelectValue placeholder="Pilih kategori" />
