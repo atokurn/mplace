@@ -23,10 +23,18 @@ interface BasicInfoCardProps {
   // Non-visual callbacks
   onPreviewImagesChange?: (urls: string[]) => void;
   onMetaTitleChange?: (metaTitle: string) => void;
+  // Initial values for edit mode
+  initialTitle?: string;
+  initialCategoryId?: string | null;
+  initialCategoryName?: string;
+  initialImageUrl?: string;
+  initialPreviewImages?: string[];
+  initialMetaTitle?: string;
 }
 
-export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryChange, onPreviewImageChange, onSelectedCategoryIdChange, onMainImageFileChange, onPreviewImagesChange, onMetaTitleChange }: BasicInfoCardProps) {
+export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryChange, onPreviewImageChange, onSelectedCategoryIdChange, onMainImageFileChange, onPreviewImagesChange, onMetaTitleChange, initialTitle, initialCategoryId, initialCategoryName, initialImageUrl, initialPreviewImages, initialMetaTitle }: BasicInfoCardProps) {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [selectedCatId, setSelectedCatId] = useState<string | undefined>(initialCategoryId ?? undefined);
 
   useEffect(() => {
     (async () => {
@@ -34,10 +42,19 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
         const categoriesData = await getAllCategories();
         const simplified: CategoryOption[] = categoriesData.map(({ id, name }: CategoryOption) => ({ id, name }));
         setCategories(simplified);
+        // Prefill parent previews when categories loaded
+        if (initialTitle) onPreviewTitleChange?.(initialTitle);
+        if (initialCategoryName) onPreviewCategoryChange?.(initialCategoryName);
+        if (initialImageUrl) onPreviewImageChange?.(initialImageUrl);
+        if (initialPreviewImages) onPreviewImagesChange?.(initialPreviewImages);
+        if (initialMetaTitle !== undefined) onMetaTitleChange?.(initialMetaTitle);
+        if (initialCategoryId) onSelectedCategoryIdChange?.(initialCategoryId);
+        if (initialCategoryId) setSelectedCatId(initialCategoryId);
       } catch {
         toast.error("Gagal memuat kategori");
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleImageUpload = async (file: File) => {
@@ -61,14 +78,28 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
     "Close-up",
     "Ukuran & Sk...",
   ];
-  const [mainImagePreview, setMainImagePreview] = useState<string | null>(null);
+  const [mainImagePreview, setMainImagePreview] = useState<string | null>(initialImageUrl ?? null);
   const [isDraggingMain, setIsDraggingMain] = useState<boolean>(false);
   const [additionalImagePreviews, setAdditionalImagePreviews] = useState<Record<string, string | null>>(
-    () => Object.fromEntries(labels.map((l) => [l, null]))
+    () => {
+      const base = Object.fromEntries(labels.map((l) => [l, null])) as Record<string, string | null>;
+      if (initialPreviewImages && initialPreviewImages.length > 0) {
+        const limited = initialPreviewImages.slice(0, labels.length);
+        limited.forEach((url, idx) => { base[labels[idx]] = url; });
+      }
+      return base;
+    }
   );
   // Track uploaded remote URLs corresponding to additional image tiles
   const [additionalImageRemoteUrls, setAdditionalImageRemoteUrls] = useState<Record<string, string | null>>(
-    () => Object.fromEntries(labels.map((l) => [l, null]))
+    () => {
+      const base = Object.fromEntries(labels.map((l) => [l, null])) as Record<string, string | null>;
+      if (initialPreviewImages && initialPreviewImages.length > 0) {
+        const limited = initialPreviewImages.slice(0, labels.length);
+        limited.forEach((url, idx) => { base[labels[idx]] = url; });
+      }
+      return base;
+    }
   );
   const [isDraggingAdditional, setIsDraggingAdditional] = useState<string | null>(null);
   // Tambahan: state dan utilitas untuk reorder gambar
@@ -431,13 +462,14 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
       {/* Product name */}
       <div>
         <Label className="text-sm font-medium">Nama produk</Label>
-        <Input placeholder="Contoh: T-shirt" className="bg-background border-border text-sm" onChange={(e) => { onPreviewTitleChange?.(e.target.value); onMetaTitleChange?.(e.target.value); }} />
+        <Input placeholder="Contoh: T-shirt" className="bg-background border-border text-sm" defaultValue={initialTitle ?? ""} onChange={(e) => { onPreviewTitleChange?.(e.target.value); onMetaTitleChange?.(e.target.value); }} />
       </div>
 
       {/* Category */}
       <div>
         <Label className="text-sm font-medium">Kategori</Label>
-        <Select onValueChange={(value) => {
+        <Select value={selectedCatId} onValueChange={(value) => {
+          setSelectedCatId(value);
           const selected = categories.find((cat) => cat.id === value);
           if (selected) onPreviewCategoryChange?.(selected.name);
           onSelectedCategoryIdChange?.(value);

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { products } from "@/lib/db/schema";
+import { products, productVariants, inventory } from "@/lib/db/schema";
 import { takeFirstOrThrow } from "@/lib/db/utils";
 import { eq, inArray } from "drizzle-orm";
 import { revalidateTag, unstable_noStore } from "next/cache";
@@ -15,13 +15,15 @@ import { getErrorMessage } from "@/lib/handle-error";
 import type { 
   UpdateProductSchema,
   DeleteProductsSchema,
-  UpdateProductsSchema 
+  UpdateProductsSchema,
+  UpdateVariantsSchema,
 } from "../validations/products";
 import { 
   createProductSchema,
   updateProductSchema,
   deleteProductsSchema as deleteProductsZod,
   updateProductsSchema as updateProductsZod,
+  updateVariantsSchema as updateVariantsZod,
 } from "../validations/products";
 import { z } from "zod";
 import { deleteMultiple, deleteSingle } from "@/lib/actions";
@@ -50,8 +52,66 @@ export async function createProduct(input: z.input<typeof createProductSchema>) 
       .returning()
       .then(takeFirstOrThrow);
 
+    // NEW: Insert variants (and inventory) if provided
+    if (parsed.variants && Array.isArray(parsed.variants) && parsed.variants.length > 0) {
+      try {
+        // Prepare variant rows
+        const variantRows = parsed.variants.map((v) => {
+          const autoTitle = v.title ?? (
+            v.attributes
+              ? Object.entries(v.attributes)
+                  .filter(([key, val]) => key && val)
+                  .map(([key, val]) => `${key}: ${val}`)
+                  .join(" / ")
+              : undefined
+          );
+          return {
+            productId: newProduct.id,
+            sku: v.sku,
+            title: autoTitle,
+            price: v.price,
+            compareAtPrice: v.compareAtPrice,
+            attributes: v.attributes,
+            imageUrl: v.imageUrl,
+            barcode: v.barcode,
+            packageWeightGrams: v.packageWeightGrams,
+            weightUnit: v.weightUnit ?? "g",
+            packageLengthCm: v.packageLengthCm,
+            packageWidthCm: v.packageWidthCm,
+            packageHeightCm: v.packageHeightCm,
+            preOrderEnabled: v.preOrderEnabled ?? false,
+            isActive: v.isActive ?? true,
+          };
+        });
+  
+        const insertedVariants = await db
+          .insert(productVariants)
+          .values(variantRows)
+          .returning();
+  
+        // Insert inventory rows per variant
+        for (let i = 0; i < insertedVariants.length; i++) {
+          const vInput = parsed.variants[i];
+          const vRow = insertedVariants[i];
+          const stockVal = typeof vInput.stock === "number" && vInput.stock >= 0 ? vInput.stock : 0;
+          await db.insert(inventory).values({
+            productId: newProduct.id,
+            variantId: vRow.id,
+            stock: stockVal,
+            reserved: 0,
+            lowStockThreshold: 0,
+          });
+        }
+      } catch (variantErr) {
+        return {
+          data: newProduct,
+          error: `Product created, but failed to save variants: ${getErrorMessage(variantErr)}`,
+        };
+      }
+    }
+  
     revalidateTag("products");
-
+  
     return {
       data: newProduct,
       error: null,
@@ -295,6 +355,112 @@ export async function toggleProductStatus(id: string) {
 
     return {
       data: updatedProduct,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      data: null,
+      error: getErrorMessage(err),
+    };
+  }
+}
+
+export async function updateVariants(input: UpdateVariantsSchema) {
+  unstable_noStore();
+  try {
+    const session = await getServerSession(authOptions) as Session | null;
+    if (!session?.user?.id) {
+      return {
+        data: null,
+        error: "You must be logged in to update variants",
+      };
+    }
+
+    if (session.user.role !== "admin") {
+      return {
+        data: null,
+        error: "You don't have permission to update variants",
+      };
+    }
+
+    const parsed = updateVariantsZod.parse(input);
+
+    const updatedVariantIds: string[] = [];
+    const productIds = new Set<string>();
+
+    for (const item of parsed.items) {
+      // Ensure variant exists
+      const variant = await db
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.id, item.id))
+        .limit(1)
+        .then((res) => res[0]);
+
+      if (!variant) {
+        // Skip missing variant but continue processing others
+        continue;
+      }
+
+      productIds.add(variant.productId);
+
+      // Update variant pricing fields if provided
+      if (item.price !== undefined || item.compareAtPrice !== undefined) {
+        await db
+          .update(productVariants)
+          .set({
+            ...(item.price !== undefined ? { price: item.price } : {}),
+            ...(item.compareAtPrice !== undefined ? { compareAtPrice: item.compareAtPrice } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(productVariants.id, item.id));
+      }
+
+      // Update inventory stock aggregation if provided
+      if (item.stock !== undefined) {
+        const invRows = await db
+          .select()
+          .from(inventory)
+          .where(eq(inventory.variantId, item.id));
+
+        const reservedSum = invRows.reduce((acc, row) => acc + Number(row.reserved ?? 0), 0);
+
+        if (invRows.length === 0) {
+          // Create a single inventory row for the variant
+          await db.insert(inventory).values({
+            productId: variant.productId,
+            variantId: item.id,
+            stock: (item.stock ?? 0) + reservedSum,
+            reserved: reservedSum,
+            lowStockThreshold: 0,
+            updatedAt: new Date(),
+          });
+        } else {
+          // Normalize to one active row: set the first row to desired available stock + reserved, zero out others
+          const [primary, ...rest] = invRows;
+          await db
+            .update(inventory)
+            .set({ stock: (item.stock ?? 0) + reservedSum, reserved: reservedSum, updatedAt: new Date() })
+            .where(eq(inventory.id, primary.id));
+
+          for (const r of rest) {
+            await db
+              .update(inventory)
+              .set({ stock: 0, reserved: 0, updatedAt: new Date() })
+              .where(eq(inventory.id, r.id));
+          }
+        }
+      }
+
+      updatedVariantIds.push(item.id);
+    }
+
+    // Revalidate product lists and individual product caches
+    revalidateTag("products");
+    productIds.forEach((pid) => revalidateTag(`product-${pid}`));
+
+    return {
+      data: updatedVariantIds,
       error: null,
     };
   } catch (err) {

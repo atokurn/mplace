@@ -359,6 +359,28 @@ export default function AddProductPage() {
         ? defaultPrice
         : String(variantPrices.length ? Math.min(...variantPrices) : 0);
 
+      // Build variants payload when addVariant is true
+      const variantsPayload = addVariant
+        ? variantTableData.map((c) => {
+            const qty = c.quantity && c.quantity.trim() !== "" ? parseInt(c.quantity, 10) : 0;
+            const w = c.weight && c.weight.trim() !== "" ? Number(c.weight) : NaN;
+            const packageWeightGrams = Number.isFinite(w)
+              ? c.weightUnit === "kg"
+                ? Math.round(w * 1000)
+                : Math.round(w)
+              : undefined;
+            return {
+              sku: c.sku,
+              price: c.price,
+              attributes: c.options, // { VariantName: OptionValue }
+              stock: Number.isFinite(qty) && qty >= 0 ? qty : 0,
+              packageWeightGrams,
+              weightUnit: c.weightUnit,
+              isActive: true,
+            };
+          })
+        : undefined;
+
       const payload = {
         title: previewTitle,
         description,
@@ -389,6 +411,7 @@ export default function AddProductPage() {
         isNew: true,
         isBestseller: false,
         publishedAt: undefined,
+        variants: variantsPayload,
       } as const;
 
       const result = await createProduct(payload as any);

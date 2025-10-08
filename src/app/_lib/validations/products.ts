@@ -21,6 +21,26 @@ export type GetProductsSchema = {
   operator?: 'and' | 'or';
 };
 
+// NEW: Variant item schema for product creation
+const variantCreateItemSchema = z.object({
+  sku: z.string().min(1, "SKU is required"),
+  title: z.string().optional(),
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format").optional(),
+  compareAtPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid compare-at price format").optional(),
+  attributes: z.record(z.string()).optional(),
+  imageUrl: z.string().url("Invalid image URL").optional(),
+  barcode: z.string().max(64).optional(),
+  packageWeightGrams: z.number().int().min(0, "Weight must be a non-negative integer").optional(),
+  weightUnit: z.enum(["g", "kg"]).default("g").optional(),
+  packageLengthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid package length").optional(),
+  packageWidthCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid package width").optional(),
+  packageHeightCm: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid package height").optional(),
+  preOrderEnabled: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  // Initial inventory stock for the variant
+  stock: z.number().int().min(0).optional(),
+});
+
 export const createProductSchema = z.object({
   // Core product information
   title: z.string().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
@@ -69,6 +89,9 @@ export const createProductSchema = z.object({
   
   // Publishing
   publishedAt: z.date().optional(),
+  
+  // NEW: Variants payload (optional)
+  variants: z.array(variantCreateItemSchema).optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial().extend({
@@ -86,7 +109,23 @@ export const updateProductsSchema = z.object({
   category: z.string().optional(),
 });
 
+// ===== Added: Variant update schemas =====
+export const updateVariantSchema = z.object({
+  id: z.string().uuid("Invalid variant ID"),
+  // Decimal fields in Drizzle are represented as strings
+  price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format").optional(),
+  compareAtPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid compare-at price format").optional(),
+  // Stock aggregated across inventories; we accept desired total stock as integer
+  stock: z.number().int().min(0).optional(),
+});
+
+export const updateVariantsSchema = z.object({
+  items: z.array(updateVariantSchema).min(1, "No variants to update"),
+});
+
 export type CreateProductSchema = z.infer<typeof createProductSchema>;
 export type UpdateProductSchema = z.infer<typeof updateProductSchema>;
 export type DeleteProductsSchema = z.infer<typeof deleteProductsSchema>;
 export type UpdateProductsSchema = z.infer<typeof updateProductsSchema>;
+export type UpdateVariantSchema = z.infer<typeof updateVariantSchema>;
+export type UpdateVariantsSchema = z.infer<typeof updateVariantsSchema>;

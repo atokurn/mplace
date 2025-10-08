@@ -26,8 +26,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  // Hide sidebar and header for /products/add route
-  const hideChrome = pathname === "/products/add";
+  // Hide sidebar and header for /products/add and /products/[id]/edit routes
+  const hideChrome = pathname === "/products/add" || (pathname?.startsWith("/products/") && pathname?.endsWith("/edit"));
   if (hideChrome) {
     return (
       <div className="min-h-screen">

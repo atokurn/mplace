@@ -6,8 +6,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import type { Product } from "@/lib/db/schema";
-import { ArrowUpDown, CircleDashed, DollarSign, Text, CheckCircle2, XCircle, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowUpDown, DollarSign, Text, CheckCircle2, XCircle, ChevronDown, ChevronRight, MoreHorizontal, Edit, Trash2, Eye, ShoppingBag } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatPrice } from "@/lib/utils";
 
 interface GetProductsTableColumnsProps {
@@ -21,13 +24,6 @@ export function getProductsTableColumns({
   categoryCounts,
   priceRange,
 }: GetProductsTableColumnsProps): ColumnDef<Product>[] {
-  // Build category options from counts map
-  const categoryOptions = Object.entries(categoryCounts).map(([value, count]) => ({
-    label: value,
-    value,
-    count,
-  }));
-
   return [
     {
       id: "select",
@@ -68,7 +64,7 @@ export function getProductsTableColumns({
         const imageUrl: string = p?.thumbnailUrl || p?.imageUrl || "/placeholder.svg";
         const variantCount: number = (p?.variantCount ?? (Array.isArray(p?.variants) ? p.variants.length : 0)) as number;
         const firstSku: string | null = Array.isArray(p?.variants) && p.variants.length > 0 ? (p.variants[0]?.sku ?? null) : null;
-        const isExpandable = variantCount >= 3;
+        const isExpandable = variantCount > 0;
         const isExpanded = row.getIsExpanded();
         return (
           <div className="flex items-center gap-3 max-w-[40rem]">
@@ -83,11 +79,13 @@ export function getProductsTableColumns({
               <div className="truncate font-medium">{p?.title}</div>
               <div className="text-xs text-muted-foreground">
                 ID: {p?.id}
-                {firstSku ? <>
-                  {" "}• SKU: {firstSku}
-                </> : null}
+                {!isExpandable && firstSku ? (
+                  <>
+                    {" "}• SKU: {firstSku}
+                  </>
+                ) : null}
               </div>
-              {isExpandable ? (
+              {/* {isExpandable ? (
                 <button
                   type="button"
                   onClick={row.getToggleExpandedHandler()}
@@ -100,7 +98,7 @@ export function getProductsTableColumns({
                   )}
                   {variantCount} SKU
                 </button>
-              ) : null}
+              ) : null} */}
             </div>
           </div>
         );
@@ -115,20 +113,51 @@ export function getProductsTableColumns({
       filterFn: "includesString",
     },
     {
-      id: "category",
-      accessorKey: "category",
+      id: "performance",
+      accessorKey: "viewCount",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Category" />
+        <DataTableColumnHeader column={column} title="Performa" />
       ),
-      cell: ({ row }) => <div className="w-40 truncate">{row.getValue("category")}</div>,
-      meta: {
-        label: "Category",
-        variant: "multiSelect",
-        options: categoryOptions,
-        icon: CircleDashed,
+      cell: ({ row }) => {
+        const p: any = row.original as any;
+        const views: number = Number(p?.viewCount ?? 0);
+        const sales: number = Number(p?.salesCount ?? 0);
+        const hasData = (views ?? 0) > 0 || (sales ?? 0) > 0;
+        return (
+          <div className="w-32">
+            {hasData ? (
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1"><Eye className="h-3.5 w-3.5" />{views}</span>
+                <span className="inline-flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" />{sales}</span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">--</span>
+            )}
+          </div>
+        );
       },
-      enableColumnFilter: true,
-      filterFn: "arrIncludesSome",
+      enableColumnFilter: false,
+      enableSorting: true,
+      meta: {
+        label: "Performa",
+        variant: "text",
+        icon: ArrowUpDown,
+      },
+    },
+    {
+      id: "stock",
+      accessorKey: "totalStock",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Stok" />
+      ),
+      cell: ({ row }) => {
+        const totalStock: number = Number((row.original as any)?.totalStock ?? 0);
+        return (
+          <div className="w-24 text-left font-medium">{totalStock}</div>
+        );
+      },
+      enableColumnFilter: false,
+      enableSorting: false,
     },
     {
       id: "price",
@@ -162,7 +191,7 @@ export function getProductsTableColumns({
         })();
 
         return (
-          <div className="w-48 text-right">
+          <div className="w-48 text-left">
             <div className="font-medium">{sellText}</div>
             {promoText ? (
               <div className="text-xs text-muted-foreground">Promosi: {promoText}</div>
@@ -209,26 +238,46 @@ export function getProductsTableColumns({
       filterFn: "arrIncludesSome",
     },
     {
-      id: "createdAt",
-      accessorKey: "createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Created At" />
-      ),
-      cell: ({ cell }) => {
-        const date = cell.getValue<Date | string>();
-        const d = typeof date === "string" ? new Date(date) : date;
-        return <div className="w-40">{d ? d.toLocaleDateString() : ""}</div>;
-      },
-      enableColumnFilter: false,
-      enableSorting: true,
-    },
-    {
       id: "actions",
-      header: () => null,
-      cell: () => null,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Tindakan" />
+      ),
+      cell: ({ row }) => {
+        const p: any = row.original as any;
+        const editHref = `/products/${p?.id}/edit`;
+        return (
+          <div className="flex items-center justify-start gap-1">
+            <Link href={editHref} aria-label="Edit product">
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <Edit className="h-4 w-4" />
+              </Button>
+            </Link>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={editHref} className="flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" disabled>
+                  <Trash2 className="h-4 w-4" />
+                  Delete (coming soon)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
       enableSorting: false,
       enableHiding: false,
-      size: 40,
+      size: 80,
     },
   ];
 }

@@ -461,14 +461,98 @@ export async function getProductById(id: string) {
   return await unstable_cache(
     async () => {
       try {
-        const product = await db
+        const base = await db
           .select()
           .from(products)
           .where(eq(products.id, id))
           .limit(1)
           .then((res) => res[0] ?? null);
 
-        return product;
+        if (!base) return null;
+
+        // Fetch variants with aggregated available stock and include attributes & weights
+        const variantRows = await db
+          .select({
+            id: productVariants.id,
+            productId: productVariants.productId,
+            sku: productVariants.sku,
+            title: productVariants.title,
+            price: productVariants.price,
+            compareAtPrice: productVariants.compareAtPrice,
+            attributes: productVariants.attributes,
+            packageWeightGrams: productVariants.packageWeightGrams,
+            weightUnit: productVariants.weightUnit,
+            stock: sql<number>`COALESCE(SUM(${inventory.stock} - ${inventory.reserved}), 0)`,
+          })
+          .from(productVariants)
+          .leftJoin(inventory, eq(inventory.variantId, productVariants.id))
+          .where(eq(productVariants.productId, id))
+          .groupBy(
+            productVariants.id,
+            productVariants.productId,
+            productVariants.sku,
+            productVariants.title,
+            productVariants.price,
+            productVariants.compareAtPrice,
+            productVariants.attributes,
+            productVariants.packageWeightGrams,
+            productVariants.weightUnit,
+          );
+
+        const variants = variantRows.map((v) => ({
+          id: v.id,
+          productId: v.productId,
+          sku: v.sku ?? null,
+          title: v.title ?? null,
+          price:
+            v.price !== null && v.price !== undefined
+              ? Number((v.price as unknown) as string)
+              : null,
+          compareAtPrice:
+            v.compareAtPrice !== null && v.compareAtPrice !== undefined
+              ? Number((v.compareAtPrice as unknown) as string)
+              : null,
+          attributes: (v.attributes as Record<string, string> | null) ?? null,
+          packageWeightGrams:
+            v.packageWeightGrams !== null && v.packageWeightGrams !== undefined
+              ? Number(v.packageWeightGrams)
+              : null,
+          weightUnit: (v.weightUnit as 'g' | 'kg' | null) ?? null,
+          stock: Number(v.stock ?? 0),
+        }));
+
+        // Product-level inventory (no variant)
+        const productInventoryRow = await db
+          .select({
+            productId: inventory.productId,
+            stock: sql<number>`COALESCE(SUM(${inventory.stock} - ${inventory.reserved}), 0)`,
+          })
+          .from(inventory)
+          .where(and(eq(inventory.productId, id), sql`${inventory.variantId} IS NULL`))
+          .groupBy(inventory.productId)
+          .then((rows) => rows[0] ?? null);
+
+        const productStock = productInventoryRow ? Number(productInventoryRow.stock ?? 0) : 0;
+
+        return {
+          ...base,
+          variants,
+          productStock,
+        } as typeof base & {
+          variants: Array<{
+            id: string;
+            productId: string;
+            sku: string | null;
+            title: string | null;
+            price: number | null;
+            compareAtPrice: number | null;
+            attributes: Record<string, string> | null;
+            packageWeightGrams: number | null;
+            weightUnit: 'g' | 'kg' | null;
+            stock: number;
+          }>;
+          productStock: number;
+        };
       } catch (err) {
         console.error("Error fetching product:", err);
         return null;

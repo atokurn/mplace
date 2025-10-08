@@ -17,6 +17,7 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
   renderSubRow?: (row: ReturnType<TanstackTable<TData>["getRowModel"]>["rows"][number]) => React.ReactNode;
+  renderExpandTrigger?: (row: ReturnType<TanstackTable<TData>["getRowModel"]>["rows"][number]) => React.ReactNode;
 }
 
 export function DataTable<TData>({
@@ -25,6 +26,7 @@ export function DataTable<TData>({
   children,
   className,
   renderSubRow,
+  renderExpandTrigger,
   ...props
 }: DataTableProps<TData>) {
   return (
@@ -86,8 +88,16 @@ export function DataTable<TData>({
                         </TableCell>
                       ))}
                     </TableRow>
+                    {/* New expansion trigger row */}
+                    {renderExpandTrigger ? (
+                      <TableRow className="bg-background">
+                        <TableCell colSpan={row.getVisibleCells().length} className="p-0">
+                          {renderExpandTrigger(row)}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
                     {row.getIsExpanded() && renderSubRow ? (
-                      <TableRow className="bg-muted/30">
+                      <TableRow className="bg-muted/30 hover:bg-muted/40">
                         <TableCell colSpan={row.getVisibleCells().length} className="p-0">
                           {renderSubRow(row)}
                         </TableCell>
