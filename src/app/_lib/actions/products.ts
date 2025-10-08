@@ -137,6 +137,7 @@ export async function updateProduct(input: UpdateProductSchema) {
 
     const { id: idStr } = updateProductSchema.pick({ id: true }).parse(input);
     const updateData = updateProductSchema.omit({ id: true }).parse(input);
+    const { productStock, ...productFields } = updateData as any;
      const product = await db
        .select()
        .from(products)
@@ -162,12 +163,58 @@ export async function updateProduct(input: UpdateProductSchema) {
      const updatedProduct = await db
        .update(products)
        .set({
-         ...(updateData as Partial<NewProduct>),
+         ...(productFields as Partial<NewProduct>),
          updatedAt: new Date(),
        })
        .where(eq(products.id, idStr))
        .returning()
        .then(takeFirstOrThrow);
+
+    // If product-level stock is provided and product has no variants, update inventory aggregation
+    if (productStock !== undefined) {
+      // Check if product has variants; if it does, skip product-level stock update
+      const hasVariant = await db
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.productId, idStr))
+        .limit(1)
+        .then((rows) => !!rows[0]);
+
+      if (!hasVariant) {
+        const invRows = await db
+          .select()
+          .from(inventory)
+          .where(eq(inventory.productId, idStr));
+
+        const reservedSum = invRows.reduce((acc, row: any) => acc + Number(row.reserved ?? 0), 0);
+
+        if (invRows.length === 0) {
+          // Create a single inventory row for the product (non-variant)
+          await db.insert(inventory).values({
+            productId: idStr,
+            variantId: null,
+            stock: Number(productStock ?? 0) + reservedSum,
+            reserved: reservedSum,
+            lowStockThreshold: 0,
+            updatedAt: new Date(),
+          });
+        } else {
+          // Normalize: set first row to desired available stock + reserved, zero out others
+          const [primary, ...rest] = invRows as any[];
+          await db
+            .update(inventory)
+            .set({ stock: Number(productStock ?? 0) + reservedSum, reserved: reservedSum, updatedAt: new Date() })
+            .where(eq(inventory.id, (primary as any).id));
+
+          for (const r of rest) {
+            await db
+              .update(inventory)
+              .set({ stock: 0, reserved: 0, updatedAt: new Date() })
+              .where(eq(inventory.id, (r as any).id));
+          }
+        }
+      }
+    }
 
     revalidateTag("products");
     revalidateTag(`product-${idStr}`);

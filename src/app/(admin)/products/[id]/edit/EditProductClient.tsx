@@ -87,6 +87,8 @@ export default function EditProductClient({ product }: EditProductClientProps) {
     },
   ]);
   const [variantTableData, setVariantTableData] = React.useState<VariantCombinationData[]>([]);
+  // Map combinationId -> existing variantId to enable updates from editor
+  const variantIdByComboRef = React.useRef<Record<string, string>>({});
 
   React.useEffect(() => {
     const extended = product as any;
@@ -154,6 +156,10 @@ export default function EditProductClient({ product }: EditProductClientProps) {
         }
       }
       const combinationId = comboIds.join("-");
+      // Track mapping to existing variant id
+      if (combinationId) {
+        variantIdByComboRef.current[combinationId] = v.id;
+      }
       const unit = (v.weightUnit as "g" | "kg") ?? "g";
       const grams = v.packageWeightGrams ?? null;
       const weightStr = grams != null ? (unit === "kg" ? (Number(grams) / 1000).toString() : String(grams)) : "";
@@ -178,6 +184,11 @@ export default function EditProductClient({ product }: EditProductClientProps) {
       generateVariantCombinations(variants);
     }
   };
+
+  // Router is already initialized above; avoid duplicate declarations
+
+  // Router
+  const router = useRouter();
 
   const handleDefaultPriceChange = (value: string) => setDefaultPrice(value);
   const handleDefaultQuantityChange = (value: string) => setDefaultQuantity(value);
@@ -343,7 +354,24 @@ export default function EditProductClient({ product }: EditProductClientProps) {
     console.log("Saving draft...");
   };
 
-  const router = useRouter();
+  // Helper to build variant update payload from current table
+  const buildVariantUpdateItems = () => {
+    if (!addVariant) return [] as Array<{ id: string; price?: string; stock?: number }>;
+    return (
+      variantTableData
+        .map((row) => {
+          const id = variantIdByComboRef.current[row.combinationId];
+          if (!id) return null;
+          const out: any = { id };
+          const priceTrim = String(row.price ?? "").trim();
+          const qtyTrim = String(row.quantity ?? "").trim();
+          if (priceTrim !== "" && !Number.isNaN(Number(priceTrim))) out.price = priceTrim;
+          if (qtyTrim !== "" && !Number.isNaN(Number(qtyTrim))) out.stock = Number(qtyTrim);
+          return out;
+        })
+        .filter(Boolean) as Array<{ id: string; price?: string; stock?: number }>
+    );
+  };
 
   const handleSubmit = async () => {
     if (!previewTitle.trim()) {
@@ -359,9 +387,12 @@ export default function EditProductClient({ product }: EditProductClientProps) {
       return;
     }
 
-    let imageUrlAbs = product.imageUrl;
+    // Gunakan previewImage jika sudah berupa URL remote; jika blob/local, fallback ke nilai lama
+    const isRemoteUrl = (u?: string | null) => !!u && (u.startsWith("http://") || u.startsWith("https://") || u.startsWith("/"));
+    let imageUrlAbs = isRemoteUrl(previewImage) ? previewImage : product.imageUrl;
     try {
-      if (mainImageFile) {
+      // Hanya upload jika ada file baru dan preview belum berupa URL remote
+      if (mainImageFile && !isRemoteUrl(previewImage)) {
         const fd = new FormData();
         fd.append("file", mainImageFile);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -416,11 +447,26 @@ export default function EditProductClient({ product }: EditProductClientProps) {
         isNew: product.isNew,
         isBestseller: product.isBestseller,
         publishedAt: product.publishedAt ?? undefined,
+        // NEW: product-level stock when there are no variants
+        productStock: !addVariant ? Number(defaultQuantity || "0") : undefined,
       } as const;
 
+      // First update the product
       const result = await updateProduct(payload as any);
       if (result.data && !result.error) {
-        toast.success("Produk berhasil diperbarui");
+        // Then, if there are variant changes, update variants too
+        const variantItems = buildVariantUpdateItems();
+        if (variantItems.length > 0) {
+          const vResult = await updateVariants({ items: variantItems } as any);
+          if (vResult.error) {
+            toast.error(`Produk tersimpan, varian gagal: ${vResult.error}`);
+            // Still navigate, but inform about partial failure
+            router.push("/admin/products");
+            router.refresh();
+            return;
+          }
+        }
+        toast.success("Produk dan varian berhasil diperbarui");
         router.push("/admin/products");
         router.refresh();
       } else {
@@ -450,7 +496,7 @@ export default function EditProductClient({ product }: EditProductClientProps) {
               onPreviewImagesChange={(urls) => setPreviewImages(urls)}
               onMetaTitleChange={(t) => setMetaTitle(t || undefined)}
               initialTitle={product.title}
-              initialCategoryId={product.categoryId ?? null}
+              initialCategoryId={product.categoryId ?? undefined}
               initialCategoryName={product.category}
               initialImageUrl={product.imageUrl}
               initialPreviewImages={product.previewImages ?? []}
@@ -470,21 +516,21 @@ export default function EditProductClient({ product }: EditProductClientProps) {
                   defaultQuantity={defaultQuantity}
                   onDefaultQuantityChange={handleDefaultQuantityChange}
                 />
-                <VariantsEditor
-                  addVariant={addVariant}
-                  variants={variants}
-                  variantTableData={variantTableData}
-                  onAddVariantSection={handleAddVariantSection}
-                  onRemoveVariantSection={handleRemoveVariantSection}
-                  onVariantNameChange={handleVariantNameChange}
-                  onRemoveVariantOption={handleRemoveVariantOption}
-                  onVariantOptionValueChange={handleVariantOptionValueChange}
-                  onVariantOptionImageChange={handleVariantOptionImageChange}
-                  onVariantTableInputChange={handleVariantTableInputChange}
-                  onWeightUnitChange={handleWeightUnitChange}
-                  onRemoveVariantCombination={handleRemoveVariantCombination}
-                  onReorderVariantOptions={handleReorderVariantOptions}
-                />
+              <VariantsEditor
+                addVariant={addVariant}
+                variants={variants}
+                variantTableData={variantTableData}
+                onAddVariantSection={handleAddVariantSection}
+                onRemoveVariantSection={handleRemoveVariantSection}
+                onVariantNameChange={handleVariantNameChange}
+                onRemoveVariantOption={handleRemoveVariantOption}
+                onVariantOptionValueChange={handleVariantOptionValueChange}
+                onVariantOptionImageChange={handleVariantOptionImageChange}
+                onVariantTableInputChange={handleVariantTableInputChange}
+                onWeightUnitChange={handleWeightUnitChange}
+                onRemoveVariantCombination={handleRemoveVariantCombination}
+                onReorderVariantOptions={handleReorderVariantOptions}
+              />
               </CardContent>
             </Card>
             <ShippingCard

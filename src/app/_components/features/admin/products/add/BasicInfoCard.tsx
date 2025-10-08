@@ -199,6 +199,8 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
     setMainImagePreview(url);
     onPreviewImageChange?.(url);
     onMainImageFileChange?.(file);
+    // Upload segera agar gambar utama tersimpan dan preview menggunakan URL remote
+    await uploadMainImage(file);
   };
 
   const isUrlInUse = (url: string, exceptKey?: string): boolean => {
@@ -252,12 +254,39 @@ export default function BasicInfoCard({ onPreviewTitleChange, onPreviewCategoryC
       // Jangan revoke langsung; biarkan unmount cleanup
       setMainImagePreview(url);
       onPreviewImageChange?.(url);
+      onMainImageFileChange?.(file);
+      // Upload segera ke server dan sinkronkan preview dengan URL remote
+      await uploadMainImage(file);
       return;
     }
     const fromKey = e.dataTransfer.getData("text/plain");
     if (fromKey) swapPreviews(fromKey, "__main__");
   };
 
+  // Upload gambar utama ke server, lalu sinkronkan preview dengan URL remote
+  const uploadMainImage = async (file: File) => {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        let errMsg = "Gagal mengunggah gambar utama";
+        try {
+          const errJson = await res.json();
+          errMsg = errJson?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+      }
+      const upload = await res.json();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const imageUrlAbs = origin ? `${origin}${upload.url}` : upload.url;
+      setMainImagePreview(imageUrlAbs);
+      onPreviewImageChange?.(imageUrlAbs);
+      toast.success("Gambar utama diunggah");
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal mengunggah gambar utama");
+    }
+  };
   // Upload image to server and store remote URL for the given tile label (scoped inside component)
   const uploadAdditionalImage = async (label: string, file: File) => {
     try {

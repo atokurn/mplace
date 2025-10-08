@@ -96,6 +96,8 @@ export const createProductSchema = z.object({
 
 export const updateProductSchema = createProductSchema.partial().extend({
   id: z.string().uuid("Invalid product ID"),
+  // Allow updating aggregated product-level stock (non-variant)
+  productStock: z.number().int().min(0).optional(),
 });
 
 export const deleteProductsSchema = z.object({
